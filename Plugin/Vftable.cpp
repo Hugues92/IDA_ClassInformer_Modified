@@ -156,6 +156,7 @@ qstring getNonDefaultComment(flags_t f, ea_t ea, LPCSTR defaultComment)
 		get_cmt(ea, false, s, MAXSTR - 1);
 		if (0 == strnicmp(defaultComment, s, MAXSTR - 1))
 			strcpy_s(s, "");
+		else
 		if (strstr(s, vftable::defaultCommentBase) == s)
 		{
 			// Check Index is valid
@@ -168,6 +169,8 @@ qstring getNonDefaultComment(flags_t f, ea_t ea, LPCSTR defaultComment)
 				//msg(" "EAFORMAT" [%s] av:%x dv:%x [%s]\n", ea, defaultComment, av, dv, s);
 			}
 		}
+		else
+			strcpy_s(s, "");
 	}
 	qstring q = s;
 	return q;
@@ -516,6 +519,8 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 		{
 			MakeDefaultComment(comment);
 			isDefault = newMemberName == defaultName;
+			if (newMemberName.length())
+				memberName = newMemberName;
 		}
 		if (newFullName.length() && 0 == fullName.length())
 			fullName = newFullName;

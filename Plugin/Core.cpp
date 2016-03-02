@@ -1373,7 +1373,6 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
     if (get_true_segm_name(seg, name, SIZESTR(name)) <= 0)
         strcpy(name, "???");
     msgR(" N: \"%s\", A: "EAFORMAT"-"EAFORMAT", S: %s. Pass 1\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
-    refreshUI();
 
 	RTTI::maxClassNameLength = 0;
     UINT found = 0;
