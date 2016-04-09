@@ -230,13 +230,13 @@ void guessMember(ea_t eaMember)
 		bool guessed = false;
 		tinfo_t tif;
 		if (!get_tinfo2(eaMember, &tif))
-		if (guess_tinfo2(eaMember, &tif) && tif.is_func())
-		{
-			typeMember(eaMember, tif, false);
-			guessed = true;
-		}
-		else
-			msg(" "EAFORMAT" ** not guessed ** \n", eaMember);
+			if (guess_tinfo2(eaMember, &tif) && tif.is_func())
+			{
+				typeMember(eaMember, tif, false);
+				guessed = true;
+			}
+			else
+				msg(" "EAFORMAT" ** not guessed ** \n", eaMember);
 		else
 		{
 			typeMember(eaMember, tif, true);
@@ -357,7 +357,8 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 	}
 
 	ea_t newJump = BADADDR;
-	while (ea_t next = getRelJmpTarget(newMember) != BADADDR)
+	ea_t next = BADADDR;
+	while ((next = getRelJmpTarget(newMember)) != BADADDR)
 	{
 		// Should be code
 		flags_t flags = getFlags(newMember);
@@ -403,7 +404,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 		if (BADADDR != newJump)
 		{
 			jumpFlags = getFlags(jump);
-			while (ea_t next = getRelJmpTarget(newJump) != BADADDR)
+			while ((next = getRelJmpTarget(newJump)) != BADADDR)
 			{
 				flags_t f = getFlags(newJump);
 				newComment = getNonDefaultComment(f, newJump, defaultComment.c_str());
@@ -531,7 +532,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 		if (unique && !isOutOfHierarchy)	// forward comment
 		{
 			newJump = jump;
-			while (ea_t next = getRelJmpTarget(newJump) != BADADDR)
+			while ((next = getRelJmpTarget(newJump)) != BADADDR)
 			{
 				flags_t f = getFlags(newJump);
 				newComment = getNonDefaultComment(f, newJump, defaultComment.c_str());
