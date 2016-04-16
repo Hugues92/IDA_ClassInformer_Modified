@@ -541,7 +541,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 				set_name(newJump, "");	// so it gets recalculated to j_...
 				newJump = next;
 			}
-			if (currentFullName != fullName)
+			if ((currentFullName != fullName) || (jump != BADADDR))
 				set_name(member, fullName.c_str());
 			newComment = getNonDefaultComment(memberFlags, member, defaultComment.c_str());
 			if (0 == newComment.length())
