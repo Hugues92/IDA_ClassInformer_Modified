@@ -2663,7 +2663,6 @@ static BOOL dumpVftables()
 					}
 					//msgR("\t\tClasses:\t%d '%s' from '%s'\n", i, szClassDef, szClass);
 				}
-
 				CloseFiles();
 			}
 			catch (...)

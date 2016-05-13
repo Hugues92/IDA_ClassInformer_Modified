@@ -64,12 +64,11 @@ namespace vftable
 		bool	isIdentical;
 		bool	isMember;
 		bool	isOutOfHierarchy;
-		VFMemberList* parentList;
 		EntryInfo() : vft(BADADDR), parentVft(BADADDR), entry(BADADDR), member(BADADDR), jump(BADADDR), index(UINT(-1)),
 			memberFlags(0), entryFlags(0), jumpFlags(0),
 			className(), memberName(), returnName(), paramName(), fullName(), comment(), jumpComment(), typeName(), jumpTypeName(),
-			isDefault(false), isInherited(false), isIdentical(false), isMember(false), isOutOfHierarchy(false), parentList(NULL) {};
-		EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR szClassName, VFMemberList* aParentList);
+			isDefault(false), isInherited(false), isIdentical(false), isMember(false), isOutOfHierarchy(false) {};
+		EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR szClassName, VFMemberList* parentList);
 		EntryInfo(const EntryInfo& parentInfo) : 
 			vft(parentInfo.vft), parentVft(parentInfo.parentVft), entry(parentInfo.entry), member(parentInfo.member), jump(parentInfo.jump),
 			index(parentInfo.index), memberFlags(parentInfo.memberFlags), entryFlags(parentInfo.entryFlags), jumpFlags(parentInfo.jumpFlags),
@@ -77,7 +76,7 @@ namespace vftable
 			paramName(parentInfo.paramName), fullName(parentInfo.fullName), comment(parentInfo.comment), jumpComment(parentInfo.jumpComment),
 			typeName(parentInfo.typeName), jumpTypeName(parentInfo.jumpTypeName),
 			isDefault(parentInfo.isDefault), isInherited(parentInfo.isInherited), isIdentical(parentInfo.isIdentical), isMember(parentInfo.isMember),
-			isOutOfHierarchy(parentInfo.isOutOfHierarchy), parentList(NULL) {};
+			isOutOfHierarchy(parentInfo.isOutOfHierarchy) {};
 		EntryInfo(const EntryInfo& parentInfo, qstring ClassName, ea_t VFT) : EntryInfo(parentInfo)
 		{
 			className = ClassName;
@@ -85,7 +84,6 @@ namespace vftable
 			vft = VFT;
 			entry = vft + index * sizeof(ea_t);
 		};
-		void	process(UINT iIndex, LPCSTR szClassName, bool propagate = false);
 		bool	IsDefault()			{ return isDefault; };
 		bool	IsInherited()		{ return isInherited; };
 		bool	IsIdentical()		{ return isIdentical; };
