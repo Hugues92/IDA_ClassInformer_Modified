@@ -280,26 +280,18 @@ bool IsAssociatedClass(bool& isParent, bool& isDescendant, RTTI::classInfo* ci, 
 	return found;
 }
 
-vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR szClassName, VFMemberList* parentList)
+vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR szClassName, VFMemberList* aParentList)
 {
 	EntryInfo();
 
-	RTTI::classInfo* ci = RTTI::findClassInList(szClassName);
-	if (!ci)
-	{
-		msgR("	*** ci is null for %s\r", szClassName);
-		return;
-	}
-	assert(ci);
-
-	qstring defaultComment = "";
 	index = iIndex;
 	className = szClassName;
 	MakeDefaultName(defaultName);
-	MakeDefaultComment(defaultComment);
 	vft = eaVft;
 	entry = vft + index * sizeof(ea_t);
 	parentVft = eaParentVft;
+	parentList = aParentList;
+
 	if (BADADDR != parentVft && parentList && parentList->size() > iIndex)
 	{
 		vftable::EntryInfo* p = &(*parentList)[iIndex];
@@ -321,7 +313,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 		isInherited = true;
 		isIdentical = true;
 		isMember = p->isMember;
-		isOutOfHierarchy= p->isOutOfHierarchy;
+		isOutOfHierarchy = p->isOutOfHierarchy;
 	}
 	else
 	{
@@ -344,6 +336,23 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 		isMember = false;
 		isOutOfHierarchy = false;
 	}
+
+	process(iIndex, szClassName);
+}
+
+void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate)
+{
+	qstring defaultComment = "";
+	MakeDefaultComment(defaultComment);
+	qstring tClassName = szClassName;
+	RTTI::classInfo* ci = RTTI::findClassInList(tClassName.c_str());
+	if (!ci)
+	{
+		msgR("	*** ci is null for %s\r", tClassName.c_str());
+		return;
+	}
+	assert(ci);
+
 	ea_t newMember = getEa(entry);
 	bool unique = true;
 	for (ea_t i = ci->m_start; i < ci->m_end; i += sizeof(ea_t))
@@ -386,7 +395,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 
 	if (!IsIdentical())
 	{
-		className = szClassName;
+		className = tClassName;
 		fullName = "";
 		isOutOfHierarchy = false;
 
@@ -435,7 +444,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 			newMemberName = ExtractMemberName(newComment);
 	}
 
-	if (!IsIdentical())
+	if (propagate || !IsIdentical())
 	{
 		// Extract current name from member
 		memberFlags = getFlags(member);
@@ -461,7 +470,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 			{
 				isOutOfHierarchy = !IsAssociatedClass(isParent, isDescendant, ci, currentClass);
 				if (isDescendant)
-					currentClass = szClassName;	// member should be named after the first class that uses it
+					currentClass = tClassName;	// member should be named after the first class that uses it
 			}
 			// if memberName from a parent use it as our member name
 			if (!IsOutOfHierarchy())
@@ -497,7 +506,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 			newMemberName = ExtractMemberName(newFullName);
 		if (newMemberName.length() && newMemberName != defaultName)
 		{
-			if (memberName != newMemberName)
+			if (propagate || (memberName != newMemberName))
 			{
 				memberName = newMemberName;
 				RTTI::classInfo* aCI = ci;
@@ -509,7 +518,10 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 					{
 						vftable::EntryInfo* aEI = &(*aML)[iIndex];
 						if (0 == aEI->memberName.length() || aEI->memberName == defaultName)
+						{
 							aEI->memberName = memberName;
+							aEI->process(iIndex, aEI->className.c_str(), true);
+						}
 					}
 					aCI = &RTTI::classList[k];
 				}
@@ -541,7 +553,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 				set_name(newJump, "");	// so it gets recalculated to j_...
 				newJump = next;
 			}
-			if (currentFullName != fullName)
+			if ((currentFullName != fullName) || (jump != BADADDR))
 				set_name(member, fullName.c_str());
 			newComment = getNonDefaultComment(memberFlags, member, defaultComment.c_str());
 			if (0 == newComment.length())
