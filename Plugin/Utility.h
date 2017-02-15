@@ -52,6 +52,7 @@ inline BOOL hasUniqueName(ea_t ea) { return(has_name(get_flags_novalue(ea))); }
 #define refreshUI() WaitBox::processIdaEvents()
 
 #define CATCH() catch (...) { msg("** Exception in %s()! ***\n", __FUNCTION__); }
+#define CATCHTRUE() catch (...) { msg("** Exception in %s()! ***\n", __FUNCTION__); return(TRUE); }
 
 typedef qlist<ea_t> eaList;
 typedef stdext::hash_set<ea_t> eaSet;

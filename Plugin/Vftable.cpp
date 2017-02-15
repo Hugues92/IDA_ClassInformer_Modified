@@ -30,9 +30,10 @@ namespace vftable
 
 // Attempt to get information of and fix vftable at address
 // Return TRUE along with info if valid vftable parsed at address
-BOOL vftable::getTableInfo(ea_t ea, vtinfo &info)
+BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
 {
     ZeroMemory(&info, sizeof(vtinfo));
+	int motive = 0;
 
 	// Start of a vft should have an xref and a name (auto, or user, etc).
     // Ideal flags 32bit: FF_DWRD, FF_0OFF, FF_REF, FF_NAME, FF_DATA, FF_IVL
@@ -42,10 +43,11 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info)
     {
         // Get raw (auto-generated mangled, or user named) vft name
         //if (!get_name(BADADDR, ea, info.name, SIZESTR(info.name)))
-        //    msg(EAFORMAT" ** vftable::getTableInfo(): failed to get raw name!\n", ea);
+            //msg(EAFORMAT" ** vftable::getTableInfo(): failed to get raw name!\n", ea);
 
         // Determine the vft's method count
         ea_t start = info.start = ea;
+		size_t index = 0;
         while (TRUE)
         {
             // Should be an ea_t offset to a function here (could be unknown if dirty IDB)
@@ -54,7 +56,7 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info)
             flags_t indexFlags = get_flags_novalue(ea);
             if (!(isEa(indexFlags) || isUnknown(indexFlags)))
             {
-                //msg(" ******* 1\n");
+                motive = 1;
                 break;
             }
 
@@ -66,40 +68,59 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info)
                 if (memberPtr == 0)
                     fixEa(ea);
 
-                //msg(" ******* 2\n");
+                motive = 2;
                 break;
             }
 
             // Should see code for a good vft method here, but it could be dirty
             flags_t flags = get_flags_novalue(memberPtr);
             if (!(isCode(flags) || isUnknown(flags)))
-            {
-                //msg(" ******* 3\n");
-                break;
-            }
+                if (ea == start)
+                    do_unknown(memberPtr, DOUNK_SIMPLE);
+                else
+                {
+                    motive = 3;
+                    break;
+                }
 
-            if (ea != start)
+            if (index && (index >= parentSize))	// unless we are still smaller than our parent
             {
                 // If we see a ref after first index it's probably the beginning of the next vft or something else
                 if (hasRef(indexFlags))
                 {
-                    //msg(" ******* 4\n");
+                    motive = 4;
                     break;
                 }
 
                 // If we see a COL here it must be the start of another vftable
                 if (RTTI::_RTTICompleteObjectLocator::isValid(memberPtr))
                 {
-                    //msg(" ******* 5\n");
+                    motive = 5;
                     break;
                 }
             }
+			else  // Just for debugging
+			{
+				// If we see a ref at the first index it must be a function pointer
+				if (hasRef(indexFlags))
+				{
+					motive = 4;
+				}
+
+				// If we see a COL here it must be the start of another vftable
+				if (RTTI::_RTTICompleteObjectLocator::isValid(memberPtr))
+				{
+					motive = 5;
+				}
+			}
 
             // As needed fix ea_t pointer, and, or, missing code and function def here
             fixEa(ea);
-            fixFunction(memberPtr);
+            if (!fixFunction(memberPtr))
+				break;
 
             ea += sizeof(ea_t);
+			index++;
         };
 
         // Reached the presumed end of it
@@ -111,7 +132,9 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info)
         }
     }
 
-    //dumpFlags(ea);
+    if (BADADDR != ea)
+        msg("Cannot interpret vftable: "EAFORMAT": "EAFORMAT"-"EAFORMAT", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
+	// dumpFlags(ea);
     return(FALSE);
 }
 
@@ -535,9 +558,9 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 			if (newMemberName.length())
 				memberName = newMemberName;
 		}
-		if (newFullName.length() && 0 == fullName.length())
-			fullName = newFullName;
 		isMember = memberName.length() && unique && !isOutOfHierarchy;
+		if (newFullName.length() && isMember)
+			fullName = newFullName;
 		
 		guessMember(member);
 
@@ -832,116 +855,11 @@ int vftable::tryKnownMember(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR prefixN
 
 	if (eaMember && (eaMember != BADADDR))
 	{
-		//char szCurrName[MAXSTR] = "";
-		//char szCurrParentName[MAXSTR] = "";
-		//char szParentName[MAXSTR] = "";
-		//char szNewName[MAXSTR] = "";
-		//LPSTR szTemp = NULL;
-		//::qsnprintf(szNewName, MAXSTR - 1, "%s::Func%04X", szClassName, iIndex);
-		//szNewName[MAXSTR - 1] = 0;
-
-		//flags_t flags = getFlags((ea_t)eaMember);
-		//flags_t vftflags = getFlags(vft);
-
-		////msg("%s  "EAFORMAT" ** Processing member %s (%d) at "EAFORMAT" from "EAFORMAT" ["EAFORMAT"] **\n", eaJump != BADADDR ? "\t" : "", eaMember, szNewName, iIndex, vft, parentvft, flags);
-
-		//char szCmnt[MAXSTR] = "";
-		//bool isDefaultCmnt = hasDefaultComment(vft, szCmnt, &szTemp) || (0 == strlen(szCmnt));
-		////msg("  "EAFORMAT" ** Comment '%s' is default ? %d **\n", eaMember, szCmnt, isDefaultCmnt);
-
-		//// Check if it has a default name
-		//bool isDefault = false;
-		//bool isMember = false;
-		//LPSTR szBaseName = 0;
-		//isMember = extractNames(eaMember, vft, iIndex, szCurrName, szParentName, &szBaseName, szCmnt);
-		//if (has_name(flags) && !has_dummy_name(flags))
-		//{
-		//	isDefault = IsDefault(vft, eaMember, iIndex, szClassName, szCurrName);
-		//	if (isDefault)
-		//	{
-		//		if (parentvft != BADADDR)
-		//		{
-		//			ea_t parentMember = parentvft + iIndex*sizeof(ea_t);
-		//			ea_t parentSub;
-		//			if (getVerify_t(parentMember, parentSub))
-		//				isMember = extractNames(parentSub, parentMember, iIndex, szCurrParentName, szParentName, &szBaseName, szCmnt);
-		//			if (isMember)
-		//				::qsnprintf(szNewName, MAXSTR - 1, "%s::%s", szClassName, szBaseName);
-		//		}
-		//	}
-		//	else if (!isMember)
-		//	{
-		//		if (parentvft != BADADDR)
-		//		{
-		//			ea_t parentMember = parentvft + iIndex*sizeof(ea_t);
-		//			ea_t parentSub;
-		//			if (getVerify_t(parentMember, parentSub))
-		//				isMember = extractNames(parentSub, parentMember, iIndex, szCurrParentName, szParentName, &szBaseName, szCmnt);
-		//			if (isMember) {
-		//				::qsnprintf(szNewName, MAXSTR - 1, "%s::%s", szParentName, szBaseName);
-		//				//msg("  "EAFORMAT" ** Processing parent member '%s' at %08X **\n", eaMember, szNewName, parentvft);
-		//				isDefault = true;
-		//			}
-		//		}
-		//	}
-		//}
-		//if (isMember && !isDefault)
-		//	::qsnprintf(szNewName, (MAXSTR - 1), "%s::%s", szParentName, szBaseName);
-
-		//::qsnprintf(szCmnt, MAXSTR - 1, " (#Func %04X) %s", iIndex, szNewName);
-
 		EntryInfo entryInfo = EntryInfo(iIndex, vft - iIndex * sizeof(ea_t), parentvft, prefixName, vfMemberList);
 		if (vfMemberList->size()>iIndex)
 			(*vfMemberList)[iIndex] = entryInfo;
 		else
 			vfMemberList->push_back(entryInfo);
-
-		//// Skip if it already has a non default name
-		//if (!has_name(entryInfo.memberFlags) || has_dummy_name(entryInfo.memberFlags) || isDefault)
-		//{
-		//	// Should be code
-		//	if (!isCode(flags))
-		//	{
-		//		fixFunction(eaMember);
-		//		flags = getFlags((ea_t)eaMember);
-		//	}
-		//	if (isCode(flags))
-		//	{
-		//		ea_t eaAddress = getRelJmpTarget(eaMember);
-
-		//		if(eaAddress != BADADDR)
-		//		{
-		//			return(tryKnownMember(vft, eaAddress, iIndex, prefixName, parentvft, eaMember, vfMemberList));
-		//		}
-		//		else {
-		//			if (eaJump != BADADDR)
-		//				set_name(eaJump, "", SN_NOWARN);	// will recalc the j_Name when Name is updated
-		//			guessMember(eaMember);
-		//			set_name(eaMember, szNewName, SN_NOWARN);
-		//			if (eaJump != BADADDR)
-		//				set_cmt(eaJump, szCmnt, false);
-		//			//msg("%s ="EAFORMAT" ** Processed member %s (%d) at "EAFORMAT" from "EAFORMAT" ["EAFORMAT"] **\n", eaJump != BADADDR ? "\t" : "", eaAddress, szNewName, iIndex, vft, parentvft, flags);
-		//		}
-		//		if (isDefaultCmnt)
-		//			set_cmt(vft, szCmnt, false);
-		//	}
-		//	else
-		//		msg(" "EAFORMAT" ** Not code at this member! **\n", eaMember);
-		//}
-		//else
-		//{
-		//	guessMember(eaMember);
-		//	if (isDefaultCmnt)
-		//	{
-		//		set_cmt(vft, szCmnt, false);
-		//	}
-		//}
-		//char sz[MAXSTR] = "";
-		//isDefaultCmnt = hasDefaultComment(eaMember, sz, &szTemp) || (0 == strlen(sz));
-		//if (isDefaultCmnt)
-		//	set_cmt(vft, szCmnt, false);
-
-		////msg("  "EAFORMAT" ** Done member '%s' at %08X (%s) **\n", eaMember, szNewName, vft, szCmnt);
 	}
 
 	return(iType);

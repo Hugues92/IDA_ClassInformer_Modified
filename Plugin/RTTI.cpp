@@ -1303,7 +1303,7 @@ void RTTI::CalcCTypeName(LPSTR cTypeName, LPCSTR prefixName)
 		while (LPSTR sz = strchr(cTypeName, '[')) *sz = '_';
 		while (LPSTR sz = strchr(cTypeName, ']')) *sz = '_';
 	}
-	//msgR("  ** PrefixName:'%s' as '%s'\n", prefixName, ci->m_cTypeName);
+	//msgR("  ** PrefixName:'%s' as '%s'\n", prefixName, cTypeName);
 }
 
 bool RTTI::AddNonRTTIclass(LPCSTR prefixName)
@@ -1403,7 +1403,7 @@ void RTTI::processVftablePart1(ea_t vft, ea_t col)
 
     // Get vftable info
     vftable::vtinfo vi;
-    if (vftable::getTableInfo(vft, vi))
+    if (vftable::getTableInfo(vft, vi, 0))
     {
         //msg(EAFORMAT" - "EAFORMAT" c: %d\n", vi.start, vi.end, vi.methodCount);
 
@@ -1838,7 +1838,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 
 	// Get vftable info
 	vftable::vtinfo vi;
-	if (vftable::getTableInfo(vft, vi))
+	if (vftable::getTableInfo(vft, vi, 0))
 	{
 		//msg(EAFORMAT" - "EAFORMAT" c: %d\n", vi.start, vi.end, vi.methodCount);
 
@@ -1865,6 +1865,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 		bcdList list;
 		UINT numBaseClasses;
 		ci->m_done = true;
+		//msgR("***** Done %s\n", ci->m_cTypeName);
 		list = ci->m_bcdlist;
 		numBaseClasses = ci->m_numBaseClasses;
 		//UINT i = findIndexInList(ci->m_className);
@@ -1901,12 +1902,14 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 					placed++;
 
 					bool found = false;
+					size_t parentSize = 0;
 					for (UINT j = 0; j < classList.size(); j++)
 						if (0 == stricmp(classList[j].m_className, plainName))
 						{
 							if (!RTTI::classList[j].m_done)
 								processVftablePart2(RTTI::classList[j].m_vft, RTTI::classList[j].m_col);
 							found = true;
+							parentSize = ((RTTI::classList[j].m_end - RTTI::classList[j].m_start) / sizeof(ea_t));
 							break;
 						}
 					if (!found)
@@ -1916,6 +1919,9 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 					}
 					//else
 					//	msgR(EAFORMAT" - "EAFORMAT" c: %5d %s Class '%s'     found for '%s'\n", vi.start, vi.end, vi.methodCount, outputBias, plainName, ci->m_classname);
+					
+					// Make sure our vfTable is at least as big as our parent's
+					vftable::getTableInfo(vft, vi, parentSize);
 
 					if (i == 1)	// the direct parent is the only parent
 					{
@@ -1924,6 +1930,9 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 						{
 							//msg("  ** Found NM class '%s' in list at index %d (%d) **\n", plainName, index, ci->m_parents.size());
 							ci->m_parents.push_back(index);
+							RTTI::classInfo * pci = &RTTI::classList[index];
+							index = findIndexInList(ci->m_className);
+							pci->m_childs.push_back(index);
 						}
 						//else
 						//	msg("  ** Cannot find NM class '%s' in list **\n", plainName);
@@ -1961,6 +1970,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 				{
 					char plainName[MAXSTR];
 					bool found = false;
+					size_t parentSize = 0;
 					getPlainTypeName(list[k].m_name, plainName);
 					for (UINT i = 0; i < classList.size(); i++)
 						if (0 == stricmp(classList[i].m_className, plainName))
@@ -1969,6 +1979,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 								processVftablePart2(RTTI::classList[i].m_vft, RTTI::classList[i].m_col);
 							realNumBaseClasses = index + classList[i].m_numBaseClasses;
 							found = true;
+							parentSize = ((RTTI::classList[i].m_end - RTTI::classList[i].m_start) / sizeof(ea_t));
 							break;
 						}
 					if (!found)
@@ -1978,6 +1989,9 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 					}
 					//else
 					//	msgR(EAFORMAT" - "EAFORMAT" c: %5d %s Class '%s'     found for '%s'\n", vi.start, vi.end, vi.methodCount, outputBias, plainName, ci->m_classname);
+
+					// Make sure our vfTable is at least as big as our parent's
+					vftable::getTableInfo(vft, vi, parentSize);
 				}
 			}
 			else
@@ -2014,6 +2028,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 					}
 				}
 				bool found = false;
+				size_t parentSize = 0;
 				if (bi)
 					for (UINT i = 0; i < classList.size(); i++)
 						if (0 == stricmp(classList[i].m_className, plainName))
@@ -2022,6 +2037,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 								processVftablePart2(RTTI::classList[i].m_vft, RTTI::classList[i].m_col);
 							realNumBaseClasses = index + classList[i].m_numBaseClasses;
 							found = true;
+							parentSize = ((RTTI::classList[i].m_end - RTTI::classList[i].m_start) / sizeof(ea_t));
 							break;
 						}
 				if (!found)
@@ -2031,6 +2047,9 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 				}
 				//else
 				//	msgR(EAFORMAT" - "EAFORMAT" c: %5d %s Class '%s'     found for '%s'\n", vi.start, vi.end, vi.methodCount, outputBias, plainName, ci->m_classname);
+
+				// Make sure our vfTable is at least as big as our parent's
+				vftable::getTableInfo(vft, vi, parentSize);
 			}
 			//msg(" ** continuing Class '%s' bi:%08X {%1d} %d / %d \n", ci->m_classname, bi, isTopLevel, numBaseClasses, realNumBaseClasses);
 
@@ -2401,21 +2420,21 @@ bool RTTI::decodeTemplate(RTTI::templateInfo* ti, LPCSTR baseTemplate)
 			//msgR(" ** decodeTemplate: '%s' end '%s'\n", encodedTemplate, szEndTemplateTypes);
 			*szEndTemplateTypes = 0;
 			UINT iTemplateTypesCount = countTemplateType(szStartTemplateTypes);
-			for (UINT i = iTemplateTypesCount; i > 0; i--)
-			{
-				templateType tt;
-				tt.m_index = i-1;
-				tt.m_instance = 0;
-				strcpy_s(tt.m_name, "");
-				ti->m_templateList.push_back(tt);
-			}
-			//msgR(" ** decodeTemplate: '%s' count %d\n", encodedTemplate, iTemplateTypesCount);
-			readTemplateType(ti->m_templateList, szStartTemplateTypes);
-			//msgR(" ** decodeTemplate: '%s' is '%s'\n", encodedTemplate, decodedTemplate);
-			//for (UINT i = 0; i < iTemplateTypesCount; i++)
+			//for (UINT i = iTemplateTypesCount; i > 0; i--)
 			//{
-			//	msgR("  ** %d: '%s'\n", i, ti->m_templateList[i]);
+			//	templateType tt;
+			//	tt.m_index = i-1;
+			//	tt.m_instance = 0;
+			//	strcpy_s(tt.m_name, "");
+			//	ti->m_templateList.push_back(tt);
 			//}
+			////msgR(" ** decodeTemplate: '%s' count %d\n", encodedTemplate, iTemplateTypesCount);
+			//readTemplateType(ti->m_templateList, szStartTemplateTypes);
+			////msgR(" ** decodeTemplate: '%s' is '%s'\n", encodedTemplate, decodedTemplate);
+			////for (UINT i = 0; i < iTemplateTypesCount; i++)
+			////{
+			////	msgR("  ** %d: '%s'\n", i, ti->m_templateList[i]);
+			////}
 		}
 		strcpy_s(ti->m_templatename, MAXSTR - 1, encodedTemplate);
 		result = true;

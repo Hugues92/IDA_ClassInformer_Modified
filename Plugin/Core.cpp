@@ -1070,17 +1070,21 @@ void fixEa(ea_t ea)
 }
 
 // Make address a function
-void fixFunction(ea_t ea)
+bool fixFunction(ea_t ea)
 {
     flags_t flags = get_flags_novalue(ea);
     if (!isCode(flags))
     {
         create_insn(ea);
-        add_func(ea, BADADDR);
+		if (!isCode(flags))
+			return FALSE;
+		else
+			add_func(ea, BADADDR);
     }
     else
     if (!isFunc(flags))
         add_func(ea, BADADDR);
+	return TRUE;
 }
 
 // Get IDA EA bit value with verification
@@ -1352,14 +1356,18 @@ static BOOL findCols()
             }
         }
 
-        char numBuffer[32];
-        msgR("     Total COL: %s\n", prettyNumberString(colList.size(), numBuffer));
-        #ifdef _DEVMODE
-        msgR("COL scan time: %.3f\n", (getTimeStamp() - startTime));
-        #endif
+		try
+		{
+			char numBuffer[32];
+			msgR("     Total COL: %s\n", prettyNumberString(colList.size(), numBuffer));
+#ifdef _DEVMODE
+			msgR("COL scan time: %.3f\n", (getTimeStamp() - startTime));
+#endif
+		}
+		CATCH()
     }
-    CATCH()
-    return(FALSE);
+	CATCHTRUE()
+	return(FALSE);
 }
 
 // Locate vftables
@@ -2403,27 +2411,27 @@ static BOOL dumpVftables()
 					if (0 == strstr(aCI.m_className, "::"))
 					{
 						char plainName[MAXSTR];
-						char szTemplate[MAXSTR] = "template<";
+						char szTemplate[MAXSTR] = "template "; // "template<";
 						bool isTemplate = aCI.m_templateInfo.m_template;
-						UINT typeCount = aCI.m_templateInfo.m_templateList.size();
+						//UINT typeCount = aCI.m_templateInfo.m_templateList.size();
 						if (isTemplate && stricmp(szLastTemplate, aCI.m_templateInfo.m_templatename))
 						{
 							//msgR("\t\tTemplate: '%s' from '%s'\n", szLastTemplate, aCI.m_templateInfo.m_templatename);
-							if (isTemplate && typeCount)
-							{
-								qfprintf(fClassIncHpp, "\n");
-								char szI[10];
-								for (UINT j = 0; j < typeCount - 1; j++)
-								{
-									strcat_s(szTemplate, "typename _T");
-									strcat_s(szTemplate, _itoa(j, szI, 10));
-									strcat_s(szTemplate, ", ");
-								}
-								strcat_s(szTemplate, "typename _T");
-								strcat_s(szTemplate, _itoa(typeCount - 1, szI, 10));
-								strcat_s(szTemplate, "> ");
-								strcpy_s(szLastTemplate, aCI.m_templateInfo.m_templatename);
-							}
+							//if (isTemplate && typeCount)
+							//{
+							//	qfprintf(fClassIncHpp, "\n");
+							//	char szI[10];
+							//	for (UINT j = 0; j < typeCount - 1; j++)
+							//	{
+							//		strcat_s(szTemplate, "typename _T");
+							//		strcat_s(szTemplate, _itoa(j, szI, 10));
+							//		strcat_s(szTemplate, ", ");
+							//	}
+							//	strcat_s(szTemplate, "typename _T");
+							//	strcat_s(szTemplate, _itoa(typeCount - 1, szI, 10));
+							//	strcat_s(szTemplate, "> ");
+							//	strcpy_s(szLastTemplate, aCI.m_templateInfo.m_templatename);
+							//}
 							UINT size = aCI.m_bcdlist.size();
 							qfprintf(fClassIncHpp, "%sclass %s%s\n", isTemplate ? szTemplate : "",
 								isTemplate ? aCI.m_templateInfo.m_templatename : aCI.m_className, size > 1 ? ": public" : "");
@@ -2431,8 +2439,8 @@ static BOOL dumpVftables()
 							{
 								getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
 								RTTI::classInfo* ci = RTTI::findClassInList(plainName);
-								for (UINT k = 0; k < typeCount; k++)
-									RTTI::replaceTypeName(plainName, aCI.m_templateInfo, k);
+								//for (UINT k = 0; k < typeCount; k++)
+								//	RTTI::replaceTypeName(plainName, aCI.m_templateInfo, k);
 								::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s%s", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
 								qfprintf(fClassIncHpp, "%s\n", szClassExport);
 								if (ci)
@@ -2597,59 +2605,6 @@ static BOOL dumpVftables()
 							qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";"EAFORMAT"\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, RTTI::classList[i].m_bcdlist[k].m_attribute);
 						}
 					}
-
-					//bool isMultiInherit = strstr(RTTI::classList[i].m_classname, "::");
-					//if (!isMultiInherit)
-					//{
-					//	bool isTemplate = false;
-					//	bool newTemplate = false;
-					//	if (isTemplate = RTTI::decodeTemplate(szClassDef, szClass, RTTI::classList[i].m_classname))
-					//		newTemplate = 0 != stricmp(szClass, szTemplate);
-					//	//msgR("\t\tClasses:\t%d '%s' from '%s'\n", i, szClassDef, szClass);
-
-					//	if (newTemplate || !isTemplate)
-					//	{
-					//		if (isTemplate)
-					//			strcpy_s(szTemplate, szClass);
-					//		else
-					//			strcpy_s(szClassDef, "");
-					//		strcat_s(szClassDef, " class ");
-					//		strcat_s(szClassDef, szClass);
-					//		if (parentCount)
-					//			strcat_s(szClassDef, ":");
-					//	}
-					//	//msgR("\t\tClasses:\t%d '%s' from '%s' and '%s'\n", i, szClassDef, szClass, RTTI::classList[i].m_classname);
-
-					//	for (UINT j = 1; j < parentCount; j++)
-					//	{
-					//		UINT k = j + RTTI::classList[i].m_baseClassIndex;
-					//		if (k < RTTI::classList[i].m_bcdlist.size())
-					//		{
-					//			//msgR("  ** %d: %d as %d for %d\n", i, j, k, parentCount);
-
-					//			char plainName[MAXSTR];
-					//			getPlainTypeName(RTTI::classList[i].m_bcdlist[k].m_name, plainName);
-					//			if (newTemplate || !isTemplate)
-					//			{
-					//				strcat_s(szClassDef, " ");
-					//				strcat_s(szClassDef, plainName);
-					//				strcat_s(szClassDef, ",");
-					//			}
-					//			// skip second level parent classes
-					//			if (RTTI::classInfo* ci = RTTI::findClassInList(plainName))
-					//			{
-					//				j += (ci->m_numBaseClasses-1);
-					//			}
-					//		}
-					//	}
-					//	if (newTemplate || !isTemplate)
-					//	{
-					//		szClassDef[strlen(szClassDef) - 1] = ' ';
-					//		strcat_s(szClassDef, "{/*#classMembers#*/};");
-					//		qfprintf(fClassesDef, "%d;\"%s\"\n", i, szClassDef);
-					//	}
-					//	//msgR("\t\tClasses:\t%d '%s' from '%s'\n", i, szClassDef, szClass);
-					//}
 
 					UINT iIndex = 0;
 					for (ea_t eaAddress = RTTI::classList[i].m_start; eaAddress < RTTI::classList[i].m_end; eaAddress += sizeof(ea_t)) {

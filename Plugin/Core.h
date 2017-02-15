@@ -7,7 +7,7 @@
 
 extern void fixEa(ea_t ea);
 extern void fixDword(ea_t eaAddress);
-extern void fixFunction(ea_t eaFunc);
+extern bool fixFunction(ea_t eaFunc);
 extern void setUnknown(ea_t ea, int size);
 extern BOOL getVerifyEa(ea_t ea, ea_t &rValue);
 extern BOOL hasAnteriorComment(ea_t ea);

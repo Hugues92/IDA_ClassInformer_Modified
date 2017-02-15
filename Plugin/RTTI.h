@@ -150,13 +150,14 @@ namespace RTTI
 		bool	m_template;
 		char	m_templatename[MAXSTR];
 		int		m_templateTypeCount;
-		templateTypeList m_templateList;
+		//templateTypeList m_templateList;
 	};
 	void readTemplateType(templateTypeList list, LPCSTR templateName);
 	bool decodeTemplate(templateInfo* ti, LPCSTR baseTemplate);
 	void replaceTypeName(LPSTR plainName, templateInfo ti, UINT k);
 
 	typedef qvector<UINT> parentInfo;
+	typedef qvector<UINT> childInfo;
 	struct classInfo
 	{
 		char			m_className[MAXSTR];
@@ -173,6 +174,7 @@ namespace RTTI
 		size_t			m_size;
 		bcdList			m_bcdlist;
 		parentInfo		m_parents;
+		childInfo		m_childs;
 		templateInfo	m_templateInfo;
 	};
 	typedef qvector<classInfo> ClassList;

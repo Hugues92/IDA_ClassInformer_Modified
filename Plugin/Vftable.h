@@ -16,7 +16,7 @@ namespace vftable
 		//char name[MAXSTR];
 	};
 
-	BOOL getTableInfo(ea_t ea, vtinfo &info);
+	BOOL getTableInfo(ea_t ea, vtinfo &info, size_t parentSize);
 
 	// Returns TRUE if mangled name indicates a vftable
 	inline BOOL isValid(LPCSTR name){ return(*((PDWORD) name) == 0x375F3F3F /*"??_7"*/); }
