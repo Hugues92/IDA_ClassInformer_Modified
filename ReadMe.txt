@@ -56,4 +56,5 @@ Changes to MSVC vftables in Class Informer Modified:
 		C++ header file dumping the known classes and virtual functions.
 			Purpose is to copy and paste into a related project.
 		Include file dumping known information about constructor, destructor and classes size.
+		List of RTTI Type Descriptor (??_R0?AV...) for DynamicCast
 		And currently useless text file used as a scratch pad.
