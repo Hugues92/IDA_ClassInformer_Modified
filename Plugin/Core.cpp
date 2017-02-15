@@ -533,6 +533,28 @@ static void showEndStats()
 
 // ================================================================================================
 
+static void clearDefaultName(ea_t ear)
+{
+	if (hasUniqueName(ear))
+	{
+		qstring n = get_true_name(ear);
+		LPCSTR nn = n.c_str();
+		if (nn == strstr(nn, "__ICI__"))
+			set_name(ear, "");
+	}
+}
+
+static void clearDefaultComment(ea_t ea)
+{
+	if (has_cmt(get_flags_novalue(ea)))
+	{
+		char comment[MAXSTR]; comment[SIZESTR(comment)] = 0;
+		size_t s = get_cmt(ea, TRUE, comment, MAXSTR);
+		if (strstr(comment, "(#classinformer)"))
+			set_cmt(ea, "", TRUE);
+	}
+}
+
 // Fix/create label and comment C/C++ initializer tables
 static void setIntializerTable(ea_t start, ea_t end, BOOL isCpp)
 {
@@ -563,6 +585,30 @@ static void setIntializerTable(ea_t start, ea_t end, BOOL isCpp)
                     _snprintf(name, SIZESTR(name), "__xi_a_%d", staticCCtorCnt);
                 set_name(start, name, (SN_NON_AUTO | SN_NOWARN));
             }
+
+			size_t index = 0;
+			for (ea_t ea = start; ea < end; ea += sizeof(ea_t))
+			{
+				ea_t ear;
+				if (getVerify_t(ea, ear))
+				{
+					// Missing/bad code?
+					if (get_func(ear))
+					{
+						clearDefaultName(ear);
+						if (!hasUniqueName(ear))
+						{
+							char name[MAXSTR]; name[SIZESTR(name)] = 0;
+							if (isCpp)
+								_snprintf(name, SIZESTR(name), "__ICI__%s_%d_%0.5d", "StaticCppCtor", staticCppCtorCnt, index);
+							else
+								_snprintf(name, SIZESTR(name), "__ICI__%s_%d_%0.5d", "StaticCCtor", staticCCtorCnt, index);
+							set_name(ear, name, (SN_NON_AUTO | SN_NOWARN));
+						}
+					}
+				}
+				index++;
+			}
 
             // End label
             if (!hasUniqueName(end))
@@ -601,7 +647,27 @@ static void setIntializerTable(ea_t start, ea_t end, BOOL isCpp)
                 }
             }
 
-            if (isCpp)
+			index = 0;
+			for (ea_t ea = start + sizeof(ea_t); ea < end; ea += sizeof(ea_t))
+			{
+				ea_t ear;
+				if (getVerify_t(ea, ear))
+				{
+					clearDefaultComment(ea);
+					if (!has_cmt(get_flags_novalue(ea)))
+					{
+						char comment[MAXSTR]; comment[SIZESTR(comment)] = 0;
+						if (isCpp)
+							_snprintf(comment, SIZESTR(comment), "C++ static ctor %0.5d (#classinformer)", index);
+						else
+							_snprintf(comment, SIZESTR(comment), "C initializer %0.5d (#classinformer)", index);
+						set_cmt(ea, comment, TRUE);
+					}
+				}
+				index++;
+			}
+
+			if (isCpp)
                 staticCppCtorCnt++;
             else
                 staticCCtorCnt++;
@@ -638,7 +704,28 @@ static void setTerminatorTable(ea_t start, ea_t end)
                 set_name(start, name, (SN_NON_AUTO | SN_NOWARN));
             }
 
-            // End label
+			size_t index = 0;
+			for (ea_t ea = start; ea < end; ea += sizeof(ea_t))
+			{
+				ea_t ear;
+				if (getVerify_t(ea, ear))
+				{
+					// Missing/bad code?
+					if (get_func(ear))
+					{
+						clearDefaultName(ear);
+						if (!hasUniqueName(ear))
+						{
+							char name[MAXSTR]; name[SIZESTR(name)] = 0;
+							_snprintf(name, SIZESTR(name), "__ICI__%s_%d_%0.5d", "StaticCDtor", staticCDtorCnt, index);
+							set_name(ear, name, (SN_NON_AUTO | SN_NOWARN));
+						}
+					}
+				}
+				index++;
+			}
+
+			// End label
             if (!hasUniqueName(end))
             {
                 char name[MAXSTR]; name[SIZESTR(name)] = 0;
@@ -659,7 +746,24 @@ static void setTerminatorTable(ea_t start, ea_t end)
                 set_cmt(start, comment, TRUE);
             }
 
-            staticCDtorCnt++;
+			index = 0;
+			for (ea_t ea = start + sizeof(ea_t); ea < end; ea += sizeof(ea_t))
+			{
+				ea_t ear;
+				if (getVerify_t(ea, ear))
+				{
+					clearDefaultComment(ea);
+					if (!has_cmt(get_flags_novalue(ea)))
+					{
+						char comment[MAXSTR]; comment[SIZESTR(comment)] = 0;
+						_snprintf(comment, SIZESTR(comment), "C terminator %0.5d (#classinformer)", index);
+						set_cmt(ea, comment, TRUE);
+					}
+				}
+				index++;
+			}
+
+			staticCDtorCnt++;
         }
     }
     CATCH()
@@ -693,7 +797,28 @@ static void setCtorDtorTable(ea_t start, ea_t end)
                 set_name(start, name, (SN_NON_AUTO | SN_NOWARN));
             }
 
-            // End label
+			size_t index = 0;
+			for (ea_t ea = start; ea < end; ea += sizeof(ea_t))
+			{
+				ea_t ear;
+				if (getVerify_t(ea, ear))
+				{
+					// Missing/bad code?
+					if (get_func(ear))
+					{
+						clearDefaultName(ear);
+						if (!hasUniqueName(ear))
+						{
+							char name[MAXSTR]; name[SIZESTR(name)] = 0;
+							_snprintf(name, SIZESTR(name), "__ICI__%s_%d_%0.5d", "StaticCtorDtor", staticCDtorCnt, index);
+							set_name(ear, name, (SN_NON_AUTO | SN_NOWARN));
+						}
+					}
+				}
+				index++;
+			}
+
+			// End label
             if (!hasUniqueName(end))
             {
                 char name[MAXSTR]; name[SIZESTR(name)] = 0;
@@ -714,7 +839,24 @@ static void setCtorDtorTable(ea_t start, ea_t end)
                 set_cmt(start, comment, TRUE);
             }
 
-            staticCtorDtorCnt++;
+			index = 0;
+			for (ea_t ea = start + sizeof(ea_t); ea < end; ea += sizeof(ea_t))
+			{
+				ea_t ear;
+				if (getVerify_t(ea, ear))
+				{
+					clearDefaultComment(ea);
+					if (!has_cmt(get_flags_novalue(ea)))
+					{
+						char comment[MAXSTR]; comment[SIZESTR(comment)] = 0;
+						_snprintf(comment, SIZESTR(comment), "C initializer/terminator %0.5d (#classinformer)", index);
+						set_cmt(ea, comment, TRUE);
+					}
+				}
+				index++;
+			}
+
+			staticCtorDtorCnt++;
         }
     }
     CATCH()
@@ -1511,6 +1653,7 @@ bool OpenFiles(void)
 	fileList.push_back(FileInfo("classInformer.h"));
 	fileList.push_back(FileInfo("classInformer.inc"));
 	fileList.push_back(FileInfo("classInformer.txt"));
+	fileList.push_back(FileInfo("classRTTI.inl"));
 
 	strcpy_s(DatabaseName, strrchr(Database, '\\'));
 	LPSTR e = strrchr(DatabaseName, '.');
@@ -1551,6 +1694,7 @@ bool OpenFiles(void)
 #define fClassIncH		fileList[5].m_file
 #define fClassInc		fileList[6].m_file
 #define fClassIncTemp	fileList[7].m_file
+#define fClassRTTIinl	fileList[8].m_file
 
 bool lookupVftInClassList(LPCSTR demangledColName, ea_t* parentvft, UINT* parentCount, UINT* parentIndex) {
 	for (UINT i = 0; i < RTTI::classList.size(); i++) {
@@ -2189,6 +2333,12 @@ static BOOL dumpVftables()
 				::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;memberIndex;memberName;vftOffset;memberOffset");
 				qfprintf(fClassMembers, "%s\n", szClassExport);
 
+				::qsnprintf(szClassExport, (MAXSTR - 1), "//	extern const void * RTTI_%s", "className");
+				qfprintf(fClassRTTI, "%s\n", szClassExport);
+
+				::qsnprintf(szClassExport, (MAXSTR - 1), "//	const void * RTTI_className = (void*)0x0000000000000000");
+				qfprintf(fClassRTTIinl, "%s\n", szClassExport);
+
 				for (UINT index = RTTI::classPKeys.size(); index > 0;)
 				{
 					UINT k = RTTI::classPKeys.size() - index;
@@ -2398,6 +2548,31 @@ static BOOL dumpVftables()
 					}
 				}
 				qfprintf(fClassIncHpp, "%s\n", "");
+
+				for (UINT i = 0; i < cpks; i++)
+				{
+					if (0 == i % 100)
+						msgR("\t\t%35s Class:\t% 6d of % 6d\n", "RTTI all classes:", i + 1, cpks);
+
+					if (strchr(RTTI::classPKeys[i].pk, '1') == RTTI::classPKeys[i].pk)
+					{
+						UINT index = RTTI::classPKeys[i].index;
+						ea_t ear;
+						if (0 == strstr(RTTI::classList[index].m_className, "::") && (getVerify_t(RTTI::classList[index].m_vft - sizeof(ea_t), ear)))
+						{
+							ea_t ea = get_32bit(ear + 12);
+
+							::qsnprintf(szClassExport, (MAXSTR - 1), "  	extern const void * RTTI_%s;", RTTI::classList[index].m_className);
+							qfprintf(fClassRTTI, "%s\n", szClassExport);
+
+							::qsnprintf(szClassExport, (MAXSTR - 1), "  	const void * RTTI_%s = (void*)0x"EAFORMAT";",
+								RTTI::classList[index].m_className, ea);
+							qfprintf(fClassRTTIinl, "%s\n", szClassExport);
+						}
+					}
+				}
+				qfprintf(fClassRTTI, "%s\n", "");
+				qfprintf(fClassRTTIinl, "%s\n", "");
 
 				char szLastTemplate[MAXSTR] = "none";
 				for (UINT i = 0; i < cpks; i++)
