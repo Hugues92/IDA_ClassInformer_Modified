@@ -47,4 +47,4 @@
 
 #define STYLE_PATH ":/classinf/"
 
-#define MY_VERSION MAKEWORD(1, 3) // Low, high, convention: 0 to 99
+#define MY_VERSION MAKEWORD(2, 3) // Low, high, convention: 0 to 99

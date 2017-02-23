@@ -17,6 +17,7 @@ namespace vftable
 	bool IsMember(ea_t vft, ea_t eaMember, UINT iIndex, LPSTR szCurrName, LPSTR szBaseName, LPSTR* szMember);
 	bool extractNames(ea_t sub, ea_t entry, UINT iIndex, LPSTR currentName, LPSTR baseName, LPSTR* memberName, LPSTR szCmnt);
 	bool hasDefaultComment(ea_t entry, LPSTR cmnt, LPSTR* cmntData);
+	bool hasDefaultComment(ea_t entry, LPSTR cmnt);
 
 	const char *defaultMemberFormat = "Func%04X";	//	default: index
 	const char *defaultNameFormat = "%s::%s";	//	default: className defaultName
@@ -39,11 +40,21 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
     // Ideal flags 32bit: FF_DWRD, FF_0OFF, FF_REF, FF_NAME, FF_DATA, FF_IVL
     //dumpFlags(ea);
     flags_t flags = get_flags_novalue(ea);
-	if(hasRef(flags) && has_any_name(flags) && (isEa(flags) || isUnknown(flags)))
+	bool properVFT = TRUE;
+	//properVFT = properVFT && hasRef(flags);
+	//properVFT = properVFT && has_any_name(flags);
+	properVFT = properVFT && (isEa(flags) || isUnknown(flags));
+
+	if(!properVFT)
+	{
+		msg("\t\t\tUnreferenced vftable: "EAFORMAT": "EAFORMAT"-"EAFORMAT", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
+		return(FALSE);
+	}
+	else
     {
         // Get raw (auto-generated mangled, or user named) vft name
         //if (!get_name(BADADDR, ea, info.name, SIZESTR(info.name)))
-            //msg(EAFORMAT" ** vftable::getTableInfo(): failed to get raw name!\n", ea);
+        //    msg(EAFORMAT" ** vftable::getTableInfo(): failed to get raw name!\n", ea);
 
         // Determine the vft's method count
         ea_t start = info.start = ea;
@@ -133,7 +144,7 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
     }
 
     if (BADADDR != ea)
-        msg("Cannot interpret vftable: "EAFORMAT": "EAFORMAT"-"EAFORMAT", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
+        msg("\t\t\tCannot interpret vftable: "EAFORMAT": "EAFORMAT"-"EAFORMAT", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
 	// dumpFlags(ea);
     return(FALSE);
 }
@@ -177,20 +188,25 @@ qstring getNonDefaultComment(flags_t f, ea_t ea, LPCSTR defaultComment)
 	if (has_cmt(f))
 	{
 		get_cmt(ea, false, s, MAXSTR - 1);
-		if (0 == strnicmp(defaultComment, s, MAXSTR - 1))
-			strcpy_s(s, "");
-		else
-		if (strstr(s, vftable::defaultCommentBase) == s)
+		if (!vftable::hasDefaultComment(ea, s))
 		{
-			// Check Index is valid
-			long av = strtol(s + strlen(vftable::defaultCommentBase), NULL, 16);
-			long dv = strtol(defaultComment + strlen(vftable::defaultCommentBase), NULL, 16);
-			if (av != dv)
-			{
-				// invalid usage of a function member
+			if (0 == strnicmp(defaultComment, s, MAXSTR - 1))
 				strcpy_s(s, "");
-				//msg(" "EAFORMAT" [%s] av:%x dv:%x [%s]\n", ea, defaultComment, av, dv, s);
-			}
+			else
+				if (strstr(s, vftable::defaultCommentBase) == s)
+				{
+					// Check Index is valid
+					long av = strtol(s + strlen(vftable::defaultCommentBase), NULL, 16);
+					long dv = strtol(defaultComment + strlen(vftable::defaultCommentBase), NULL, 16);
+					if (av != dv)
+					{
+						// invalid usage of a function member
+						strcpy_s(s, "");
+						//msg(" "EAFORMAT" [%s] av:%x dv:%x [%s]\n", ea, defaultComment, av, dv, s);
+					}
+				}
+				else
+					strcpy_s(s, "");
 		}
 		else
 			strcpy_s(s, "");
@@ -375,6 +391,7 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 		return;
 	}
 	assert(ci);
+	int ourIndex = RTTI::findIndexInList(tClassName.c_str());
 
 	ea_t newMember = getEa(entry);
 	bool unique = true;
@@ -498,7 +515,7 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 			// if memberName from a parent use it as our member name
 			if (!IsOutOfHierarchy())
 			{
-				if (currentName.length() && currentName != defaultName)
+				if (currentName.length() && currentName != defaultName && 0 != currentName.find("Func0"))
 					newMemberName = currentName;
 				else
 					isDefault = currentName.length();
@@ -516,7 +533,7 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 			MakeFullName(newFullName);
 		else
 		{
-			if (newMemberName.length() && newMemberName != defaultName)
+			if (newMemberName.length() && newMemberName != defaultName && 0 != newMemberName.find("Func0"))
 			{
 				memberName = newMemberName;
 				MakeFullName(newFullName);
@@ -529,7 +546,8 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 			newMemberName = ExtractMemberName(newFullName);
 		if (newMemberName.length() && newMemberName != defaultName)
 		{
-			if (propagate || (memberName != newMemberName))
+			size_t debL = newMemberName.length();
+			if (propagate || (memberName != newMemberName) && 0 != newMemberName.find("Func0"))
 			{
 				memberName = newMemberName;
 				RTTI::classInfo* aCI = ci;
@@ -547,15 +565,37 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 						}
 					}
 					aCI = &RTTI::classList[k];
+					for (UINT l = 0; l < aCI->m_childs.size(); l++)
+					{
+						UINT c = aCI->m_childs[l];
+						if (c != ourIndex)	// Let's avoid an inifinite loop
+						{
+							RTTI::classInfo* cCI = &RTTI::classList[c];
+							if (cCI->m_done)
+							{
+								VFMemberList* aML = &RTTI::vfTableList[c];
+								if (aML && aML->size() > iIndex)
+								{
+									vftable::EntryInfo* aEI = &(*aML)[iIndex];
+									if (0 == aEI->memberName.length() || aEI->memberName == defaultName)
+									{
+										aEI->memberName = memberName;
+										aEI->process(iIndex, aEI->className.c_str(), true);
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 			MakeComment(comment);
 		}
 		else
 		{
-			MakeDefaultComment(comment);
-			isDefault = newMemberName == defaultName;
-			if (newMemberName.length())
+			if (0 != memberName.find("Func0"))
+				MakeDefaultComment(comment);
+			isDefault = newMemberName == defaultName || 0 == newMemberName.find("Func0");
+			if (newMemberName.length() && 0 != memberName.find("Func0"))
 				memberName = newMemberName;
 		}
 		isMember = memberName.length() && unique && !isOutOfHierarchy;
@@ -624,6 +664,12 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 		//msg("  "EAFORMAT" ** Jumping member %s for %s **\n", eaMember, szBase, szClassName);
 		isJump = true;
 		szBase += 2;
+	}
+	LPCSTR szi = strstr(szBase, "___");	// Corrects a bug in previous version of Modified
+	if (szi && (szBase + (strlen(szBase) - 3) == szi))
+	{
+		//msg("  "EAFORMAT" ** Bugged member %s for %s as %s **\n", eaMember, sz, szClassName, szCurrName);
+		return true;
 	}
 	char demangledName[MAXSTR] = "";
 	if (getPlainTypeName(szBase, demangledName))
@@ -715,6 +761,7 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 				return true;
 			}
 		}
+
 	}
 	return false;
 }
@@ -809,6 +856,54 @@ bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt, LPSTR* cmntData)
 			//msg("  "EAFORMAT" ** Default comment '%s' **\n", entry, cmnt);
 			*cmntData = strchr(cmnt, ')') + 2;
 			return true;
+		}
+	}
+	//else
+	//	msg("  "EAFORMAT" ** No comment **\n", entry);
+	return false;
+}
+
+bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt)
+{
+	flags_t flags = getFlags(entry);
+	bool isDefault = false;
+
+	if (has_cmt(flags))
+	{
+		LPCSTR sz = NULL;
+		strcpy_s(cmnt, MAXSTR - 1, get_any_indented_cmt(entry));
+		//msg("  "EAFORMAT" ** Comment '%s' **\n", entry, cmnt);
+		if (strstr(cmnt, " (#Func ") == cmnt)
+		{
+			sz = strstr(cmnt, "::Func");
+			if (sz)
+			{
+				// ignore those comments
+				sz = strchr(cmnt, ')');
+				isDefault = true;
+			}
+			else
+			{
+				sz = strstr(cmnt, "::purecall");
+				if (sz)
+				{
+					// ignore those comments
+					sz = strchr(cmnt, ')');
+					isDefault = true;
+				}
+				else
+				{
+					sz = strstr(cmnt, "::_");	// Corrects a bug in previous version of Modified
+					if (sz && (cmnt + (strlen(cmnt) - 3) == sz))
+					{
+						// ignore those comments
+						sz = strchr(cmnt, ')');
+						isDefault = true;
+					}
+				}
+			}
+			//msg("  "EAFORMAT" ** Default comment '%s' [%s] **\n", entry, cmnt, sz);
+			return isDefault;
 		}
 	}
 	//else

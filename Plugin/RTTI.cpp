@@ -1656,7 +1656,7 @@ void RTTI::processVftablePart1(ea_t vft, ea_t col)
     }
     else
     {
-        msg(EAFORMAT" ** Vftable attached to this COL, error?\n", vft);
+        msg(EAFORMAT"\t\t\t ** No vftable attached to this COL, error?\n", vft);
 
         // Set COL name
         if (!hasUniqueName(col))
