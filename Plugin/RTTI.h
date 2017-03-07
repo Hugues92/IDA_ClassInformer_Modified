@@ -216,6 +216,7 @@ namespace RTTI
 	extern VFTableList vfTableList;
 
 	void CalcCTypeName(LPSTR cTypeName, LPCSTR prefixName);
+	void ReplaceForCTypeName(LPSTR cTypeName, LPCSTR currName);
 	bool AddNonRTTIclass(LPCSTR prefixName);
 	void addClassDefinitionsToIda(classInfo ci, bool force = false);
 	bool checkForAllocationPattern(ea_t eaCall, size_t *amount);

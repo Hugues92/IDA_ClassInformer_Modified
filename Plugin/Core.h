@@ -15,5 +15,7 @@ extern void killAnteriorComments(ea_t ea);
 extern int  addStrucMember(struc_t *sptr, char *name, ea_t offset, flags_t flag, opinfo_t *type, asize_t nbytes);
 extern void addTableEntry(UINT flags, ea_t vft, int methodCount, LPCSTR format, ...);
 extern BOOL getPlainTypeName(__in LPCSTR mangled, __out_bcount(MAXSTR) LPSTR outStr);
+extern BOOL isTempName(ea_t ear);
+extern void clearDefaultName(ea_t ear);
 
 extern BOOL optionOverwriteComments, optionPlaceStructs;

@@ -1283,26 +1283,43 @@ BOOL RTTI::stripClassName(__in LPCSTR name, __out_bcount(MAXSTR) LPSTR outStr)
 	return(TRUE);
 }
 
+static UINT lastTooLong = 0;
+
+void RTTI::ReplaceForCTypeName(LPSTR cTypeName, LPCSTR currName)
+{
+	char workingName[MAXSTR];
+	lastTooLong++;
+	QT::qsnprintf(cTypeName, MAXSTR - 2, "__ICI__TooLong%0.5d__", lastTooLong);
+	if (strlen(currName) < (MAXSTR - 25)) {
+		strcpy_s(workingName, MAXSTR - 2, currName);
+		while (LPSTR sz = strchr(workingName, '`')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '\'')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '<')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '>')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, ',')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, ' ')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '*')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '&')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '?')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '-')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '(')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, ')')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '[')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, ']')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '~')) *sz = '_';
+		if (strlen(workingName) < (MAXSTR - 25))
+			strcpy_s(cTypeName, MAXSTR - 1, workingName);
+		else
+			lastTooLong--;
+	}
+	//msgR("  ** PrefixName:'%s' as '%s'\n", prefixName, cTypeName);
+}
+
 void RTTI::CalcCTypeName(LPSTR cTypeName, LPCSTR prefixName)
 {
-	strcpy_s(cTypeName, MAXSTR - 2, "__ICI__Too_Long__");
-	if (strlen(prefixName) < (MAXSTR - 25)) {
-		stripClassName(prefixName, cTypeName);
-		while (LPSTR sz = strchr(cTypeName, '`')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '\'')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '<')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '>')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, ',')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, ' ')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '*')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '&')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '?')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '-')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '(')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, ')')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, '[')) *sz = '_';
-		while (LPSTR sz = strchr(cTypeName, ']')) *sz = '_';
-	}
+	char workingName[MAXSTR];
+	stripClassName(prefixName, workingName);
+	ReplaceForCTypeName(cTypeName, workingName);
 	//msgR("  ** PrefixName:'%s' as '%s'\n", prefixName, cTypeName);
 }
 
@@ -1679,15 +1696,11 @@ RTTI::classInfo* RTTI::findClassInList(LPCSTR className)
 {
 	for (UINT i = 0; i < classList.size(); i++)
 		if (0 == stricmp(classList[i].m_className, className))
-		{
 			return &RTTI::classList[i];
-		}
 	if (strchr(className, '_'))
 		for (UINT i = 0; i < classList.size(); i++)
 			if (0 == stricmp(classList[i].m_cTypeName, className))
-			{
 				return &RTTI::classList[i];
-			}
 	return NULL;
 }
 
