@@ -78,7 +78,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <TargetExt>.pLW</TargetExt>
-    <TargetName>IDA_ClassInformer_PlugIn</TargetName>
+    <TargetName>IDA_ClassInformer_Modified_PlugIn</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release64|Win32'">
     <OutDir>$(SolutionDir)Plugin\$(Configuration)\</OutDir>
@@ -87,7 +87,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <TargetExt>.P64</TargetExt>
-    <TargetName>IDA_ClassInformer_PlugIn</TargetName>
+    <TargetName>IDA_ClassInformer_Modified_PlugIn</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)Plugin\$(Configuration)\</OutDir>
@@ -96,7 +96,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <TargetExt>.pLW</TargetExt>
-    <TargetName>IDA_ClassInformer_PlugIn</TargetName>
+    <TargetName>IDA_ClassInformer_Modified_PlugIn</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug64|Win32'">
     <OutDir>$(SolutionDir)Plugin\$(Configuration)\</OutDir>
@@ -105,7 +105,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <TargetExt>.P64</TargetExt>
-    <TargetName>IDA_ClassInformer_PlugIn</TargetName>
+    <TargetName>IDA_ClassInformer_Modified_PlugIn</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>

@@ -2535,67 +2535,142 @@ static BOOL dumpVftables()
 	try
 #endif
 	{
-		if (OpenFiles())
-#ifndef __DEBUG
-			try
-#endif
+		char szClass[MAXSTR] = "";
+		char szTemplate[MAXSTR] = "none";
+		char szClassDef[MAXSTR] = "";
+		char szClassExport[MAXSTR] = "";
+		::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;className;colName;vft;col;start;end;vftCount;parentCount;baseClassIndex;IsTemplate;TemplateTypeCount");
+		qfprintf(fClass, "%s\n", szClassExport);
+		::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;parentIndex;parentName;parentColName;attribute");
+		qfprintf(fClassHierarchy, "%s\n", szClassExport);
+		::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;memberIndex;memberName;vftOffset;memberOffset");
+		qfprintf(fClassMembers, "%s\n", szClassExport);
+
+		::qsnprintf(szClassExport, (MAXSTR - 1), "//	extern const void * RTTI_%s", "className");
+		qfprintf(fClassRTTI, "%s\n", szClassExport);
+
+		::qsnprintf(szClassExport, (MAXSTR - 1), "//	const void * RTTI_className = (void*)0x0000000000000000");
+		qfprintf(fClassRTTIinl, "%s\n", szClassExport);
+
+		for (UINT index = RTTI::classPKeys.size(); index > 0;)
 		{
-				char szClass[MAXSTR] = "";
-				char szTemplate[MAXSTR] = "none";
-				char szClassDef[MAXSTR] = "";
-				char szClassExport[MAXSTR] = "";
-				::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;className;colName;vft;col;start;end;vftCount;parentCount;baseClassIndex;IsTemplate;TemplateTypeCount");
-				qfprintf(fClass, "%s\n", szClassExport);
-				::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;parentIndex;parentName;parentColName;attribute");
-				qfprintf(fClassHierarchy, "%s\n", szClassExport);
-				::qsnprintf(szClassExport, (MAXSTR - 1), "classIndex;memberIndex;memberName;vftOffset;memberOffset");
-				qfprintf(fClassMembers, "%s\n", szClassExport);
+			UINT k = RTTI::classPKeys.size() - index;
+			if (0 == k % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Looking for xref to vtable offset:", k + 1, RTTI::classPKeys.size());
 
-				::qsnprintf(szClassExport, (MAXSTR - 1), "//	extern const void * RTTI_%s", "className");
-				qfprintf(fClassRTTI, "%s\n", szClassExport);
-
-				::qsnprintf(szClassExport, (MAXSTR - 1), "//	const void * RTTI_className = (void*)0x0000000000000000");
-				qfprintf(fClassRTTIinl, "%s\n", szClassExport);
-
-				for (UINT index = RTTI::classPKeys.size(); index > 0;)
+			index--;
+			UINT i = RTTI::classPKeys[index].index;
+			RTTI::classInfo aCI = RTTI::classList[i];
+			if (0 == strstr(aCI.m_className, "::"))
+			{
+				bool isAllocation = false;
+				bool diffAmount = false;
+				size_t amount = 0;
+				size_t lastAmount = 0;
+				func_t* funcFrom = NULL;
+				xrefblk_t xb;
+				for (bool ok = xb.first_to(aCI.m_vft, XREF_ALL); ok; ok = xb.next_to())
 				{
-					UINT k = RTTI::classPKeys.size() - index;
-					if (0 == k % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Looking for xref to vtable offset:", k + 1, RTTI::classPKeys.size());
-
-					index--;
-					UINT i = RTTI::classPKeys[index].index;
-					RTTI::classInfo aCI = RTTI::classList[i];
-					if (0 == strstr(aCI.m_className, "::"))
+					// xb.from - contains the referencing address
+					char funcName[MAXSTR] = "";
+					funcFrom = get_func(xb.from);
+					if (funcFrom)
 					{
-						bool isAllocation = false;
-						bool diffAmount = false;
-						size_t amount = 0;
-						size_t lastAmount = 0;
-						func_t* funcFrom = NULL;
-						xrefblk_t xb;
-						for (bool ok = xb.first_to(aCI.m_vft, XREF_ALL); ok; ok = xb.next_to())
+						qstring fN;
+						if (get_long_name(&fN, funcFrom->startEA))
+							strncpy(funcName, fN.c_str(), (MAXSTR - 1));
+					}
+					::qsnprintf(szClassExport, MAXSTR - 1, "//\txref to %s::`vftable` "EAFORMAT" : From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+						aCI.m_className, aCI.m_vft, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
+					qfprintf(fClassInc, "%s\n", szClassExport);
+					//msgR("%s\n", szClassExport);
+					isAllocation = RTTI::checkForInlineAllocationPattern(xb.from, &amount);
+
+					if (isAllocation)
+					{
+						::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : inline:"EAFORMAT" ",
+							aCI.m_className, amount, aCI.m_vft, xb.from);
+						qfprintf(fClassInc, "%s\n", szClassExport);
+						if (lastAmount)
+						{
+							if (lastAmount != amount)
+								diffAmount = true;
+						}
+						else
+							lastAmount = amount;
+						recordConstructor(xb.from, aCI.m_cTypeName, aCI, amount, i);
+					}
+					else if (funcFrom)
+					{
+						xrefblk_t xbp;
+						for (bool ok = xbp.first_to(funcFrom->startEA, XREF_ALL); ok; ok = xbp.next_to())
 						{
 							// xb.from - contains the referencing address
 							char funcName[MAXSTR] = "";
-							funcFrom = get_func(xb.from);
-							if (funcFrom)
+							func_t* funcFromParent = get_func(xbp.from);
+							bool done = false;
+							if (funcFromParent)
 							{
 								qstring fN;
-								if (get_long_name(&fN, funcFrom->startEA))
+								if (get_long_name(&fN, funcFromParent->startEA))
 									strncpy(funcName, fN.c_str(), (MAXSTR - 1));
+								BYTE b = get_byte(xbp.from);
+								if (b == 0x0E9 || b == 0xEB) // its a jmp, let's look at the xref
+								{
+									done = true;
+									xrefblk_t xbj;
+									for (bool ok = xbj.first_to(funcFromParent->startEA, XREF_ALL); ok; ok = xbj.next_to())
+									{
+										// xb.from - contains the referencing address
+										char funcName[MAXSTR] = "";
+										func_t* funcFromJump = get_func(xbj.from);
+										if (funcFromJump)
+										{
+											qstring fN;
+											if (get_long_name(&fN, funcFromJump->startEA))
+												strncpy(funcName, fN.c_str(), (MAXSTR - 1));
+										}
+										//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : jump:"EAFORMAT" From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+										//	aCI.m_classname, aCI.m_vft, funcFrom->startEA, xbj.from, funcFromJump ? funcFromJump->startEA : BADADDR, funcName);
+										//qfprintf(fClassInc, "%s\n", szClassExport);
+										isAllocation = RTTI::checkForAllocationPattern(xbj.from, &amount);
+										if (isAllocation)
+										{
+											::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : constructor:"EAFORMAT" ",
+												aCI.m_cTypeName, amount, aCI.m_vft, funcFrom->startEA);
+											qfprintf(fClassInc, "%s\n", szClassExport);
+											makeConstructor(funcFrom, aCI.m_cTypeName, aCI, amount, i);
+											if (lastAmount)
+											{
+												if (lastAmount != amount)
+													diffAmount = true;
+											}
+											else
+												lastAmount = amount;
+										}
+									}
+								}
+								//else
+								//{
+								//	::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : call:"EAFORMAT" %x",
+								//		aCI.m_classname, aCI.m_vft, funcFrom->startEA, b);
+								//	qfprintf(fClassInc, "%s\n", szClassExport);
+								//}
 							}
-							::qsnprintf(szClassExport, MAXSTR - 1, "//\txref to %s::`vftable` "EAFORMAT" : From:"EAFORMAT" Func:"EAFORMAT" '%s'",
-								aCI.m_className, aCI.m_vft, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
-							qfprintf(fClassInc, "%s\n", szClassExport);
-							//msgR("%s\n", szClassExport);
-							isAllocation = RTTI::checkForInlineAllocationPattern(xb.from, &amount);
-
-							if (isAllocation)
+							if (!done)
 							{
-								::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : inline:"EAFORMAT" ",
-									aCI.m_className, amount, aCI.m_vft, xb.from);
-								qfprintf(fClassInc, "%s\n", szClassExport);
+								//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : xref:"EAFORMAT" From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+								//	aCI.m_classname, aCI.m_vft, funcFrom->startEA, xbp.from,
+								//	funcFromParent ? funcFromParent->startEA : BADADDR, funcName);
+								//qfprintf(fClassInc, "%s\n", szClassExport);
+								isAllocation = RTTI::checkForAllocationPattern(xbp.from, &amount);
+								if (isAllocation)
+								{
+									::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : constructor:"EAFORMAT" ",
+										aCI.m_cTypeName, amount, aCI.m_vft, funcFrom->startEA);
+									qfprintf(fClassInc, "%s\n", szClassExport);
+									makeConstructor(funcFrom, aCI.m_cTypeName, aCI, amount, i);
+								}
 								if (lastAmount)
 								{
 									if (lastAmount != amount)
@@ -2603,460 +2678,383 @@ static BOOL dumpVftables()
 								}
 								else
 									lastAmount = amount;
-								recordConstructor(xb.from, aCI.m_cTypeName, aCI, amount, i);
-							}
-							else if (funcFrom)
-							{
-								xrefblk_t xbp;
-								for (bool ok = xbp.first_to(funcFrom->startEA, XREF_ALL); ok; ok = xbp.next_to())
-								{
-									// xb.from - contains the referencing address
-									char funcName[MAXSTR] = "";
-									func_t* funcFromParent = get_func(xbp.from);
-									bool done = false;
-									if (funcFromParent)
-									{
-										qstring fN;
-										if (get_long_name(&fN, funcFromParent->startEA))
-											strncpy(funcName, fN.c_str(), (MAXSTR - 1));
-										BYTE b = get_byte(xbp.from);
-										if (b == 0x0E9 || b == 0xEB) // its a jmp, let's look at the xref
-										{
-											done = true;
-											xrefblk_t xbj;
-											for (bool ok = xbj.first_to(funcFromParent->startEA, XREF_ALL); ok; ok = xbj.next_to())
-											{
-												// xb.from - contains the referencing address
-												char funcName[MAXSTR] = "";
-												func_t* funcFromJump = get_func(xbj.from);
-												if (funcFromJump)
-												{
-													qstring fN;
-													if (get_long_name(&fN, funcFromJump->startEA))
-														strncpy(funcName, fN.c_str(), (MAXSTR - 1));
-												}
-												//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : jump:"EAFORMAT" From:"EAFORMAT" Func:"EAFORMAT" '%s'",
-												//	aCI.m_classname, aCI.m_vft, funcFrom->startEA, xbj.from, funcFromJump ? funcFromJump->startEA : BADADDR, funcName);
-												//qfprintf(fClassInc, "%s\n", szClassExport);
-												isAllocation = RTTI::checkForAllocationPattern(xbj.from, &amount);
-												if (isAllocation)
-												{
-													::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : constructor:"EAFORMAT" ",
-														aCI.m_cTypeName, amount, aCI.m_vft, funcFrom->startEA);
-													qfprintf(fClassInc, "%s\n", szClassExport);
-													makeConstructor(funcFrom, aCI.m_cTypeName, aCI, amount, i);
-													if (lastAmount)
-													{
-														if (lastAmount != amount)
-															diffAmount = true;
-													}
-													else
-														lastAmount = amount;
-												}
-											}
-										}
-										//else
-										//{
-										//	::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : call:"EAFORMAT" %x",
-										//		aCI.m_classname, aCI.m_vft, funcFrom->startEA, b);
-										//	qfprintf(fClassInc, "%s\n", szClassExport);
-										//}
-									}
-									if (!done)
-									{
-										//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : xref:"EAFORMAT" From:"EAFORMAT" Func:"EAFORMAT" '%s'",
-										//	aCI.m_classname, aCI.m_vft, funcFrom->startEA, xbp.from,
-										//	funcFromParent ? funcFromParent->startEA : BADADDR, funcName);
-										//qfprintf(fClassInc, "%s\n", szClassExport);
-										isAllocation = RTTI::checkForAllocationPattern(xbp.from, &amount);
-										if (isAllocation)
-										{
-											::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : constructor:"EAFORMAT" ",
-												aCI.m_cTypeName, amount, aCI.m_vft, funcFrom->startEA);
-											qfprintf(fClassInc, "%s\n", szClassExport);
-											makeConstructor(funcFrom, aCI.m_cTypeName, aCI, amount, i);
-										}
-										if (lastAmount)
-										{
-											if (lastAmount != amount)
-												diffAmount = true;
-										}
-										else
-											lastAmount = amount;
-									}
-								}
 							}
 						}
-						if (lastAmount && !diffAmount)
-							RTTI::recordSize(aCI, amount, i);
-						qfprintf(fClassInc, "\n");
 					}
 				}
-
-				UINT cpks = RTTI::classPKeys.size();
-				for (UINT i = 0; i < cpks; i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Updating struc size:", i + 1, cpks);
-
-					//msgR("\t\t%35s Class:\t% 7d of % 7d : % 6d (%s)\n", "Updating struc size:", i + 1, cpks, RTTI::classList[RTTI::classPKeys[i].index].m_parents.size(),
-					//	RTTI::classList[RTTI::classPKeys[i].index].m_className);
-					RTTI::classInfo* aCI = &RTTI::classList[RTTI::classPKeys[i].index];
-					if (aCI->m_parents.size()>1)
-					{
-						UINT lastIndex = aCI->m_parents[1];
-						UINT lastOffset = 0;
-						//msgR("\t\t%35s Class:\t% 7d of % 7d looking at %d (%s)\n", "Updating struc size:", i + 1, cpks, lastIndex,
-						//	RTTI::classList[lastIndex].m_classname);
-						for (UINT j = 2; j < aCI->m_parents.size(); j++)
-						{
-							UINT p = aCI->m_parents[j];
-							RTTI::classInfo* ci = &RTTI::classList[p];
-							if (ci)
-							{
-								//msgR("\t\t%35s Class:\t% 7d of % 7d looking at %d (%s) offset=%d\n", "Updating struc size:", i + 1, cpks, lastIndex,
-								//	RTTI::classList[lastIndex].m_classname, lastOffset);
-								UINT offset = 0;
-								char ComposedName[MAXSTR] = "";
-								strcpy_s(ComposedName, aCI->m_className);
-								strcat_s(ComposedName, "::");
-								strcat_s(ComposedName, ci->m_className);
-								if (RTTI::classInfo* ci2 = RTTI::findClassInList(ComposedName))
-								{
-									//msgR("\t\t%35s Class:\t% 7d of % 7d looking for %d (%s) offset=%d\n", "Updating struc size:", i + 1, cpks, lastIndex,
-									//	ComposedName, lastOffset);
-									offset = RTTI::getClassOffset(ci2->m_vft, ci2->m_col);
-									if (!RTTI::classList[lastIndex].m_sizeFound)
-									{
-										RTTI::classList[lastIndex].m_sizeFound = true;
-										RTTI::classList[lastIndex].m_size = offset - lastOffset;
-										//msgR("\t\t%35s Class:\t% 7d of % 7d Size found for %d (%s): %d\n", "Updating struc size:", i + 1, cpks,
-										//	lastIndex, RTTI::classList[lastIndex].m_className, offset - lastOffset);
-									}
-								}
-								lastOffset = offset;
-							}
-							lastIndex = aCI->m_parents[j];
-						}
-					}
-				}
-
-				for (UINT i = 0; i < cpks; i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Updating struc records:", i + 1, cpks);
-
-					RTTI::addClassDefinitionsToIda(RTTI::classList[RTTI::classPKeys[i].index], true);
-				}
-
-				//return false;
-
-				for (UINT i = 0; i < cpks; i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Declare all classes:", i + 1, cpks);
-
-					if (strchr(RTTI::classPKeys[i].pk, '1') == RTTI::classPKeys[i].pk)
-					{
-						UINT index = RTTI::classPKeys[i].index;
-						if (0 == strstr(RTTI::classList[index].m_className, "::"))
-						{
-							qfprintf(fClassIncHpp, "class %s;\n", RTTI::classList[RTTI::classPKeys[i].index].m_className);
-						}
-					}
-				}
-				qfprintf(fClassIncHpp, "%s\n", "");
-
-				for (UINT i = 0; i < cpks; i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "RTTI all classes:", i + 1, cpks);
-
-					if (strchr(RTTI::classPKeys[i].pk, '1') == RTTI::classPKeys[i].pk)
-					{
-						UINT index = RTTI::classPKeys[i].index;
-						ea_t ear;
-						if (0 == strstr(RTTI::classList[index].m_className, "::") && (getVerify_t(RTTI::classList[index].m_vft - sizeof(ea_t), ear)))
-						{
-							ea_t ea = get_32bit(ear + 12);
-
-							::qsnprintf(szClassExport, (MAXSTR - 1), "  	extern const void * RTTI_%s;", RTTI::classList[index].m_className);
-							qfprintf(fClassRTTI, "%s\n", szClassExport);
-
-							::qsnprintf(szClassExport, (MAXSTR - 1), "  	const void * RTTI_%s = (void*)0x"EAFORMAT";",
-								RTTI::classList[index].m_className, ea);
-							qfprintf(fClassRTTIinl, "%s\n", szClassExport);
-						}
-					}
-				}
-				qfprintf(fClassRTTI, "%s\n", "");
-				qfprintf(fClassRTTIinl, "%s\n", "");
-
-				char szLastTemplate[MAXSTR] = "none";
-				for (UINT i = 0; i < cpks; i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Dump Templates:", i + 1, cpks);
-
-					UINT index = RTTI::classPKeys[i].index;
-					RTTI::classInfo aCI = RTTI::classList[index];
-					vftable::VFMemberList aML = RTTI::vfTableList[index];
-					if (0 == strstr(aCI.m_className, "::"))
-					{
-						char plainName[MAXSTR];
-						char szTemplate[MAXSTR] = "template "; // "template<";
-						bool isTemplate = aCI.m_templateInfo.m_template;
-						//UINT typeCount = aCI.m_templateInfo.m_templateList.size();
-						if (isTemplate && stricmp(szLastTemplate, aCI.m_templateInfo.m_templatename))
-						{
-							//msgR("\t\tTemplate: '%s' from '%s'\n", szLastTemplate, aCI.m_templateInfo.m_templatename);
-							//if (isTemplate && typeCount)
-							//{
-							//	qfprintf(fClassIncHpp, "\n");
-							//	char szI[10];
-							//	for (UINT j = 0; j < typeCount - 1; j++)
-							//	{
-							//		strcat_s(szTemplate, "typename _T");
-							//		strcat_s(szTemplate, _itoa(j, szI, 10));
-							//		strcat_s(szTemplate, ", ");
-							//	}
-							//	strcat_s(szTemplate, "typename _T");
-							//	strcat_s(szTemplate, _itoa(typeCount - 1, szI, 10));
-							//	strcat_s(szTemplate, "> ");
-							//	strcpy_s(szLastTemplate, aCI.m_templateInfo.m_templatename);
-							//}
-							UINT size = aCI.m_bcdlist.size();
-							qfprintf(fClassIncHpp, "%sclass %s%s\n", isTemplate ? szTemplate : "",
-								isTemplate ? aCI.m_templateInfo.m_templatename : aCI.m_className, size > 1 ? ": public" : "");
-							for (UINT j = 1; j < size; j++)
-							{
-								getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
-								RTTI::classInfo* ci = RTTI::findClassInList(plainName);
-								//for (UINT k = 0; k < typeCount; k++)
-								//	RTTI::replaceTypeName(plainName, aCI.m_templateInfo, k);
-								::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s%s", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
-								qfprintf(fClassIncHpp, "%s\n", szClassExport);
-								if (ci)
-									j += (ci->m_numBaseClasses - 1);
-							}
-							qfprintf(fClassIncHpp, "{\n");
-							dumpClassMembers(fClassIncHpp, aCI, aML, true, true);
-							//dumpClassMembersOld(fClassIncTemp, aCI, true, true);
-							qfprintf(fClassIncHpp, "}\t//\t%04X\n", aCI.m_size);
-						}
-
-						if (isTemplate)
-						{
-							UINT size = aCI.m_bcdlist.size();
-							qfprintf(fClassIncHpp, "//\t%s%s", aCI.m_className, size > 1 ? ": public " : ";");
-							for (UINT j = 1; j < size; j++)
-							{
-								getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
-								RTTI::classInfo* ci = RTTI::findClassInList(plainName);
-								qfprintf(fClassIncHpp, "%s%s", plainName, ci ? (j + ci->m_numBaseClasses >= size ? ";" : ",") : ",");
-								if (ci)
-									j += (ci->m_numBaseClasses - 1);
-							}
-							qfprintf(fClassIncHpp, "\n");
-						}
-					}
-				}
-				qfprintf(fClassIncHpp, "\n");
-
-				for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Dump classes:", i + 1, RTTI::classList.size());
-
-					UINT index = RTTI::classPKeys[i].index;
-					RTTI::classInfo aCI = RTTI::classList[index];
-					vftable::VFMemberList aML = RTTI::vfTableList[index];
-					bool isTemplate = aCI.m_templateInfo.m_template;
-					if (0 == strstr(aCI.m_className, "::") && !isTemplate)
-					{
-						char plainName[MAXSTR];
-						char szTemplate[MAXSTR] = "template<";
-						UINT size = aCI.m_bcdlist.size();
-						qfprintf(fClassIncHpp, "%sclass %s%s\n", isTemplate ? "typedef " : "",
-							aCI.m_className, size > 1 ? ": public" : "");
-						UINT parentCount = 1;
-						for (UINT j = 1; j < size; j++)
-						{
-							getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
-							RTTI::classInfo* ci = RTTI::findClassInList(plainName);
-							qfprintf(fClassIncHpp, "\t%s%s\n", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
-							if (ci)
-								j += (ci->m_numBaseClasses - 1);
-							parentCount++;
-						}
-						qfprintf(fClassIncHpp, "%s\n", "{");
-						dumpClassMembers(fClassIncHpp, aCI, aML, false, true);
-						qfprintf(fClassIncHpp, "};\t//\t%04X\n\n", aCI.m_size);
-					}
-				}
-
-				//for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
-				//{
-				//	if (0 == i % 100)
-				//		msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Temp Dump classes:", i + 1, RTTI::classList.size());
-
-				//	UINT index = RTTI::classPKeys[i].index;
-				//	RTTI::classInfo aCI = RTTI::classList[index];
-				//	bool isTemplate = aCI.m_templateInfo.m_template;
-				//	if (0 == strstr(aCI.m_className, "::") && !isTemplate)
-				//	{
-				//		char plainName[MAXSTR];
-				//		char szTemplate[MAXSTR] = "template<";
-				//		UINT size = aCI.m_bcdlist.size();
-				//		qfprintf(fClassIncTemp, "%sclass %s%s\n", isTemplate ? "typedef " : "",
-				//			aCI.m_className, size > 1 ? ": public" : "");
-				//		UINT parentCount = 1;
-				//		for (UINT j = 1; j < size; j++)
-				//		{
-				//			getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
-				//			RTTI::classInfo* ci = RTTI::findClassInList(plainName);
-				//			qfprintf(fClassIncTemp, "\t%s%s\n", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
-				//			if (ci)
-				//				j += (ci->m_numBaseClasses - 1);
-				//			parentCount++;
-				//		}
-				//		qfprintf(fClassIncTemp, "%s\n", "{");
-				//		dumpClassMembersOld(fClassIncTemp, aCI, false, true);
-				//		qfprintf(fClassIncTemp, "};\t//\t%04X\n\n", aCI.m_size);
-				//	}
-				//}
-
-				// include manual definitions that cannot or should not be found in file.
-				::qsnprintf(szClassExport, (MAXSTR - 1), "#include \".%s.h\"", DatabaseName);
-				qfprintf(fClassIncH, "%s\n\n", szClassExport);
-
-				for (UINT i = 0; i < RTTI::classInherit.size(); i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Dump Classes to C include:", i + 1, RTTI::classList.size());
-
-					UINT index = RTTI::classInherit[i].index;
-					RTTI::classInfo aCI = RTTI::classList[index];
-					vftable::VFMemberList aML = RTTI::vfTableList[index];
-					bool isTemplate = aCI.m_templateInfo.m_template;
-					//if (/*0 == strstr(aCI.m_classname, "::") &&*/ !isTemplate)
-					{
-						char varName[MAXSTR];
-						char szTemplate[MAXSTR] = "template<";
-						UINT size = aCI.m_bcdlist.size();
-						qfprintf(fClassIncH, "//class %s\n", aCI.m_className);
-						qfprintf(fClassIncH, "//\t%s\n", RTTI::classInherit[i].classes.c_str());
-						qfprintf(fClassIncH, "struct __cppobj __declspec(align(%d)) %s\n", sizeof(ea_t), aCI.m_cTypeName);
-						qfprintf(fClassIncH, "%s\n", "{");
-						UINT parentCount = aCI.m_parents.size();
-						UINT parentsSize = 0;
-						for (UINT j = 0; j < parentCount; j++)
-						{
-							//msgR("\t\tDump Classes to C include:\t% 7d of % 7d %d '%s' :: '%s' \n", i + 1, RTTI::classList.size(), j, aCI.m_className, aCI.m_bcdlist[j].m_name);
-							RTTI::classInfo* ci = &RTTI::classList[aCI.m_parents[j]];
-							if (ci)
-							{
-								_itoa(j, varName, 10);
-								qfprintf(fClassIncH, "\t%s\tbaseClass%s;	// %04X \n", ci->m_cTypeName, j > 0 ? varName : "", parentsSize);
-							}
-							else
-								msgR("\t\tDump Classes to C include:\t% 7d of % 7d '%s'(%d) :: '%s' not found **\n", i + 1, RTTI::classList.size(), aCI.m_className, j, aCI.m_bcdlist[j].m_name);
-							if (ci && ci->m_sizeFound)
-								parentsSize += ci->m_size;
-							else
-								parentsSize += sizeof(ea_t);	// dummy value
-						}
-						//msgR("\t\tDump Classes to C include:\t% 7d of % 7d '%s'\n", i + 1, RTTI::classList.size(), aCI.m_className);
-						dumpClassMembers(fClassIncH, aCI, aML, false, false);
-						qfprintf(fClassIncH, "};\t//\t%04X\n\n", aCI.m_size);
-					}
-				}
-
-				for (UINT i = 0; i < RTTI::classList.size(); i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Export classes:", i + 1, RTTI::classList.size());
-//if (i > 30) break;
-
-					//msgR("\t\tClasses:\t%d '%s'\n", i, RTTI::classList[i].m_classname);
-
-					UINT parentCount = RTTI::classList[i].m_numBaseClasses;
-
-					UINT iCount = (RTTI::classList[i].m_end - RTTI::classList[i].m_start) / sizeof(ea_t);
-					qfprintf(fClass, "%d;\"%s\";\"%s\";"EAFORMAT";"EAFORMAT";"EAFORMAT";"EAFORMAT";%d;%d;%d;%d;%d\n", i, RTTI::classList[i].m_className,
-						RTTI::classList[i].m_colName, RTTI::classList[i].m_vft, RTTI::classList[i].m_col, RTTI::classList[i].m_start, RTTI::classList[i].m_end, iCount,
-						parentCount, RTTI::classList[i].m_baseClassIndex, RTTI::classList[i].m_templateInfo.m_template, RTTI::classList[i].m_templateInfo.m_templateTypeCount);
-					//msgR("\t\tClasses:\t%d '%s' from '%s' and '%s'\n", i, szClassDef, szClass, RTTI::classList[i].m_classname);
-
-					for (UINT j = parentCount - 1; j > 0; j--)
-					{
-						UINT k = j + RTTI::classList[i].m_baseClassIndex;
-						if (k < RTTI::classList[i].m_bcdlist.size())
-						{
-							char plainName[MAXSTR];
-							getPlainTypeName(RTTI::classList[i].m_bcdlist[k].m_name, plainName);
-							qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";"EAFORMAT"\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, RTTI::classList[i].m_bcdlist[k].m_attribute);
-						}
-					}
-
-					UINT iIndex = 0;
-					for (ea_t eaAddress = RTTI::classList[i].m_start; eaAddress < RTTI::classList[i].m_end; eaAddress += sizeof(ea_t)) {
-						char memberName[MAXSTR] = "";
-						ea_t eaMember = vftable::getMemberName(memberName, eaAddress);
-						if (BADADDR != eaMember)
-						{
-							qfprintf(fClassMembers, "%d;%d;\"%s\";"EAFORMAT";"EAFORMAT"\n", i, iIndex, memberName, eaAddress, eaMember);
-						}
-						iIndex++;
-					}
-					//msgR("\t\tClasses:\t%d '%s' from '%s'\n", i, szClassDef, szClass);
-				}
-
-				for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
-				{
-					if (0 == i % 100)
-						msgR("\t\t%35s Funcs:\t% 7d of % 7d\n", "Dump funcs called from classes:", i + 1, RTTI::classList.size());
-
-					UINT index = RTTI::classPKeys[i].index;
-					RTTI::classInfo aCI = RTTI::classList[index];
-					vftable::VFMemberList aML = RTTI::vfTableList[index];
-					//::qsnprintf(szClassExport, MAXSTR - 1, "//\txclass '%s' vft:"EAFORMAT, aCI.m_className, aCI.m_vft);
-					//qfprintf(fClassIncTemp, "%s\n", szClassExport);
-					for (UINT m = 0; m < aML.size(); m++)
-					{
-						strcpy_s(THEprefix, "  ");
-						//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sclass '%s' member I:%d "EAFORMAT, THEprefix, aCI.m_className, m, aML[m].member);
-						//qfprintf(fClassIncTemp, "%s\n", szClassExport);
-						char funcFromName[MAXSTR] = "";
-						func_t* funcFrom = get_func(aML[m].member);
-						if (funcFrom)
-							LookupFuncFromName(funcFrom, index, 0, funcFromName, fClassIncTemp);
-					}
-				}
-
-				UINT fq = get_func_qty();
-				for (UINT index = 0; index < fq; index++)
-				{
-					if (0 == index % 100)
-						msgR("\t\t%35s Funcs:\t% 7d of % 7d\n", "Looking for xref to functions:", index + 1, fq);
-
-					strcpy_s(THEprefix, "  ");
-					char funcFromName[MAXSTR] = "";
-					func_t* funcTo = getn_func(index);
-					if (funcTo)
-						if (LookupFuncToName(funcTo, index, 0, funcFromName, fClassIncTemp))
-							/*qfprintf(fClassIncTemp, "\n")*/;
-				}
-
-				CloseFiles();
+				if (lastAmount && !diffAmount)
+					RTTI::recordSize(aCI, amount, i);
+				qfprintf(fClassInc, "\n");
 			}
-#ifndef __DEBUG
-			catch (...)
+		}
+
+		UINT cpks = RTTI::classPKeys.size();
+		for (UINT i = 0; i < cpks; i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Updating struc size:", i + 1, cpks);
+
+			//msgR("\t\t%35s Class:\t% 7d of % 7d : % 6d (%s)\n", "Updating struc size:", i + 1, cpks, RTTI::classList[RTTI::classPKeys[i].index].m_parents.size(),
+			//	RTTI::classList[RTTI::classPKeys[i].index].m_className);
+			RTTI::classInfo* aCI = &RTTI::classList[RTTI::classPKeys[i].index];
+			if (aCI->m_parents.size()>1)
 			{
-				CloseFiles();
-				msgR("** Exception in %s()! ***\n", __FUNCTION__);
+				UINT lastIndex = aCI->m_parents[1];
+				UINT lastOffset = 0;
+				//msgR("\t\t%35s Class:\t% 7d of % 7d looking at %d (%s)\n", "Updating struc size:", i + 1, cpks, lastIndex,
+				//	RTTI::classList[lastIndex].m_classname);
+				for (UINT j = 2; j < aCI->m_parents.size(); j++)
+				{
+					UINT p = aCI->m_parents[j];
+					RTTI::classInfo* ci = &RTTI::classList[p];
+					if (ci)
+					{
+						//msgR("\t\t%35s Class:\t% 7d of % 7d looking at %d (%s) offset=%d\n", "Updating struc size:", i + 1, cpks, lastIndex,
+						//	RTTI::classList[lastIndex].m_classname, lastOffset);
+						UINT offset = 0;
+						char ComposedName[MAXSTR] = "";
+						strcpy_s(ComposedName, aCI->m_className);
+						strcat_s(ComposedName, "::");
+						strcat_s(ComposedName, ci->m_className);
+						if (RTTI::classInfo* ci2 = RTTI::findClassInList(ComposedName))
+						{
+							//msgR("\t\t%35s Class:\t% 7d of % 7d looking for %d (%s) offset=%d\n", "Updating struc size:", i + 1, cpks, lastIndex,
+							//	ComposedName, lastOffset);
+							offset = RTTI::getClassOffset(ci2->m_vft, ci2->m_col);
+							if (!RTTI::classList[lastIndex].m_sizeFound)
+							{
+								RTTI::classList[lastIndex].m_sizeFound = true;
+								RTTI::classList[lastIndex].m_size = offset - lastOffset;
+								//msgR("\t\t%35s Class:\t% 7d of % 7d Size found for %d (%s): %d\n", "Updating struc size:", i + 1, cpks,
+								//	lastIndex, RTTI::classList[lastIndex].m_className, offset - lastOffset);
+							}
+						}
+						lastOffset = offset;
+					}
+					lastIndex = aCI->m_parents[j];
+				}
 			}
+		}
+
+		for (UINT i = 0; i < cpks; i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Updating struc records:", i + 1, cpks);
+
+			RTTI::addClassDefinitionsToIda(RTTI::classList[RTTI::classPKeys[i].index], true);
+		}
+
+		//return false;
+
+		for (UINT i = 0; i < cpks; i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Declare all classes:", i + 1, cpks);
+
+			if (strchr(RTTI::classPKeys[i].pk, '1') == RTTI::classPKeys[i].pk)
+			{
+				UINT index = RTTI::classPKeys[i].index;
+				if (0 == strstr(RTTI::classList[index].m_className, "::"))
+				{
+					qfprintf(fClassIncHpp, "class %s;\n", RTTI::classList[RTTI::classPKeys[i].index].m_className);
+				}
+			}
+		}
+		qfprintf(fClassIncHpp, "%s\n", "");
+
+		for (UINT i = 0; i < cpks; i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "RTTI all classes:", i + 1, cpks);
+
+			if (strchr(RTTI::classPKeys[i].pk, '1') == RTTI::classPKeys[i].pk)
+			{
+				UINT index = RTTI::classPKeys[i].index;
+				ea_t ear;
+				if (0 == strstr(RTTI::classList[index].m_className, "::") && (getVerify_t(RTTI::classList[index].m_vft - sizeof(ea_t), ear)))
+				{
+					ea_t ea = get_32bit(ear + 12);
+
+					::qsnprintf(szClassExport, (MAXSTR - 1), "  	extern const void * RTTI_%s;", RTTI::classList[index].m_className);
+					qfprintf(fClassRTTI, "%s\n", szClassExport);
+
+					::qsnprintf(szClassExport, (MAXSTR - 1), "  	const void * RTTI_%s = (void*)0x"EAFORMAT";",
+						RTTI::classList[index].m_className, ea);
+					qfprintf(fClassRTTIinl, "%s\n", szClassExport);
+				}
+			}
+		}
+		qfprintf(fClassRTTI, "%s\n", "");
+		qfprintf(fClassRTTIinl, "%s\n", "");
+
+		char szLastTemplate[MAXSTR] = "none";
+		for (UINT i = 0; i < cpks; i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Dump Templates:", i + 1, cpks);
+
+			UINT index = RTTI::classPKeys[i].index;
+			RTTI::classInfo aCI = RTTI::classList[index];
+			vftable::VFMemberList aML = RTTI::vfTableList[index];
+			if (0 == strstr(aCI.m_className, "::"))
+			{
+				char plainName[MAXSTR];
+				char szTemplate[MAXSTR] = "template "; // "template<";
+				bool isTemplate = aCI.m_templateInfo.m_template;
+				//UINT typeCount = aCI.m_templateInfo.m_templateList.size();
+				if (isTemplate && stricmp(szLastTemplate, aCI.m_templateInfo.m_templatename))
+				{
+					//msgR("\t\tTemplate: '%s' from '%s'\n", szLastTemplate, aCI.m_templateInfo.m_templatename);
+					//if (isTemplate && typeCount)
+					//{
+					//	qfprintf(fClassIncHpp, "\n");
+					//	char szI[10];
+					//	for (UINT j = 0; j < typeCount - 1; j++)
+					//	{
+					//		strcat_s(szTemplate, "typename _T");
+					//		strcat_s(szTemplate, _itoa(j, szI, 10));
+					//		strcat_s(szTemplate, ", ");
+					//	}
+					//	strcat_s(szTemplate, "typename _T");
+					//	strcat_s(szTemplate, _itoa(typeCount - 1, szI, 10));
+					//	strcat_s(szTemplate, "> ");
+					//	strcpy_s(szLastTemplate, aCI.m_templateInfo.m_templatename);
+					//}
+					UINT size = aCI.m_bcdlist.size();
+					qfprintf(fClassIncHpp, "%sclass %s%s\n", isTemplate ? szTemplate : "",
+						isTemplate ? aCI.m_templateInfo.m_templatename : aCI.m_className, size > 1 ? ": public" : "");
+					for (UINT j = 1; j < size; j++)
+					{
+						getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
+						RTTI::classInfo* ci = RTTI::findClassInList(plainName);
+						//for (UINT k = 0; k < typeCount; k++)
+						//	RTTI::replaceTypeName(plainName, aCI.m_templateInfo, k);
+						::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s%s", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
+						qfprintf(fClassIncHpp, "%s\n", szClassExport);
+						if (ci)
+							j += (ci->m_numBaseClasses - 1);
+					}
+					qfprintf(fClassIncHpp, "{\n");
+					dumpClassMembers(fClassIncHpp, aCI, aML, true, true);
+					//dumpClassMembersOld(fClassIncTemp, aCI, true, true);
+					qfprintf(fClassIncHpp, "}\t//\t%04X\n", aCI.m_size);
+				}
+
+				if (isTemplate)
+				{
+					UINT size = aCI.m_bcdlist.size();
+					qfprintf(fClassIncHpp, "//\t%s%s", aCI.m_className, size > 1 ? ": public " : ";");
+					for (UINT j = 1; j < size; j++)
+					{
+						getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
+						RTTI::classInfo* ci = RTTI::findClassInList(plainName);
+						qfprintf(fClassIncHpp, "%s%s", plainName, ci ? (j + ci->m_numBaseClasses >= size ? ";" : ",") : ",");
+						if (ci)
+							j += (ci->m_numBaseClasses - 1);
+					}
+					qfprintf(fClassIncHpp, "\n");
+				}
+			}
+		}
+		qfprintf(fClassIncHpp, "\n");
+
+		for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Dump classes:", i + 1, RTTI::classList.size());
+
+			UINT index = RTTI::classPKeys[i].index;
+			RTTI::classInfo aCI = RTTI::classList[index];
+			vftable::VFMemberList aML = RTTI::vfTableList[index];
+			bool isTemplate = aCI.m_templateInfo.m_template;
+			if (0 == strstr(aCI.m_className, "::") && !isTemplate)
+			{
+				char plainName[MAXSTR];
+				char szTemplate[MAXSTR] = "template<";
+				UINT size = aCI.m_bcdlist.size();
+				qfprintf(fClassIncHpp, "%sclass %s%s\n", isTemplate ? "typedef " : "",
+					aCI.m_className, size > 1 ? ": public" : "");
+				UINT parentCount = 1;
+				for (UINT j = 1; j < size; j++)
+				{
+					getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
+					RTTI::classInfo* ci = RTTI::findClassInList(plainName);
+					qfprintf(fClassIncHpp, "\t%s%s\n", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
+					if (ci)
+						j += (ci->m_numBaseClasses - 1);
+					parentCount++;
+				}
+				qfprintf(fClassIncHpp, "%s\n", "{");
+				dumpClassMembers(fClassIncHpp, aCI, aML, false, true);
+				qfprintf(fClassIncHpp, "};\t//\t%04X\n\n", aCI.m_size);
+			}
+		}
+
+		//for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
+		//{
+		//	if (0 == i % 100)
+		//		msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Temp Dump classes:", i + 1, RTTI::classList.size());
+
+		//	UINT index = RTTI::classPKeys[i].index;
+		//	RTTI::classInfo aCI = RTTI::classList[index];
+		//	bool isTemplate = aCI.m_templateInfo.m_template;
+		//	if (0 == strstr(aCI.m_className, "::") && !isTemplate)
+		//	{
+		//		char plainName[MAXSTR];
+		//		char szTemplate[MAXSTR] = "template<";
+		//		UINT size = aCI.m_bcdlist.size();
+		//		qfprintf(fClassIncTemp, "%sclass %s%s\n", isTemplate ? "typedef " : "",
+		//			aCI.m_className, size > 1 ? ": public" : "");
+		//		UINT parentCount = 1;
+		//		for (UINT j = 1; j < size; j++)
+		//		{
+		//			getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
+		//			RTTI::classInfo* ci = RTTI::findClassInList(plainName);
+		//			qfprintf(fClassIncTemp, "\t%s%s\n", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
+		//			if (ci)
+		//				j += (ci->m_numBaseClasses - 1);
+		//			parentCount++;
+		//		}
+		//		qfprintf(fClassIncTemp, "%s\n", "{");
+		//		dumpClassMembersOld(fClassIncTemp, aCI, false, true);
+		//		qfprintf(fClassIncTemp, "};\t//\t%04X\n\n", aCI.m_size);
+		//	}
+		//}
+
+		// include manual definitions that cannot or should not be found in file.
+		::qsnprintf(szClassExport, (MAXSTR - 1), "#include \".%s.h\"", DatabaseName);
+		qfprintf(fClassIncH, "%s\n\n", szClassExport);
+
+		for (UINT i = 0; i < RTTI::classInherit.size(); i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Dump Classes to C include:", i + 1, RTTI::classList.size());
+
+			UINT index = RTTI::classInherit[i].index;
+			RTTI::classInfo aCI = RTTI::classList[index];
+			vftable::VFMemberList aML = RTTI::vfTableList[index];
+			bool isTemplate = aCI.m_templateInfo.m_template;
+			//if (/*0 == strstr(aCI.m_classname, "::") &&*/ !isTemplate)
+			{
+				char varName[MAXSTR];
+				char szTemplate[MAXSTR] = "template<";
+				UINT size = aCI.m_bcdlist.size();
+				qfprintf(fClassIncH, "//class %s\n", aCI.m_className);
+				qfprintf(fClassIncH, "//\t%s\n", RTTI::classInherit[i].classes.c_str());
+				qfprintf(fClassIncH, "struct __cppobj __declspec(align(%d)) %s\n", sizeof(ea_t), aCI.m_cTypeName);
+				qfprintf(fClassIncH, "%s\n", "{");
+				UINT parentCount = aCI.m_parents.size();
+				UINT parentsSize = 0;
+				for (UINT j = 0; j < parentCount; j++)
+				{
+					//msgR("\t\tDump Classes to C include:\t% 7d of % 7d %d '%s' :: '%s' \n", i + 1, RTTI::classList.size(), j, aCI.m_className, aCI.m_bcdlist[j].m_name);
+					RTTI::classInfo* ci = &RTTI::classList[aCI.m_parents[j]];
+					if (ci)
+					{
+						_itoa(j, varName, 10);
+						qfprintf(fClassIncH, "\t%s\tbaseClass%s;	// %04X \n", ci->m_cTypeName, j > 0 ? varName : "", parentsSize);
+					}
+					else
+						msgR("\t\tDump Classes to C include:\t% 7d of % 7d '%s'(%d) :: '%s' not found **\n", i + 1, RTTI::classList.size(), aCI.m_className, j, aCI.m_bcdlist[j].m_name);
+					if (ci && ci->m_sizeFound)
+						parentsSize += ci->m_size;
+					else
+						parentsSize += sizeof(ea_t);	// dummy value
+				}
+				//msgR("\t\tDump Classes to C include:\t% 7d of % 7d '%s'\n", i + 1, RTTI::classList.size(), aCI.m_className);
+				dumpClassMembers(fClassIncH, aCI, aML, false, false);
+				qfprintf(fClassIncH, "};\t//\t%04X\n\n", aCI.m_size);
+			}
+		}
+
+		for (UINT i = 0; i < RTTI::classList.size(); i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Export classes:", i + 1, RTTI::classList.size());
+			//if (i > 30) break;
+
+			//msgR("\t\tClasses:\t%d '%s'\n", i, RTTI::classList[i].m_classname);
+
+			UINT parentCount = RTTI::classList[i].m_numBaseClasses;
+
+			UINT iCount = (RTTI::classList[i].m_end - RTTI::classList[i].m_start) / sizeof(ea_t);
+			qfprintf(fClass, "%d;\"%s\";\"%s\";"EAFORMAT";"EAFORMAT";"EAFORMAT";"EAFORMAT";%d;%d;%d;%d;%d\n", i, RTTI::classList[i].m_className,
+				RTTI::classList[i].m_colName, RTTI::classList[i].m_vft, RTTI::classList[i].m_col, RTTI::classList[i].m_start, RTTI::classList[i].m_end, iCount,
+				parentCount, RTTI::classList[i].m_baseClassIndex, RTTI::classList[i].m_templateInfo.m_template, RTTI::classList[i].m_templateInfo.m_templateTypeCount);
+			//msgR("\t\tClasses:\t%d '%s' from '%s' and '%s'\n", i, szClassDef, szClass, RTTI::classList[i].m_classname);
+
+			for (UINT j = parentCount - 1; j > 0; j--)
+			{
+				UINT k = j + RTTI::classList[i].m_baseClassIndex;
+				if (k < RTTI::classList[i].m_bcdlist.size())
+				{
+					char plainName[MAXSTR];
+					getPlainTypeName(RTTI::classList[i].m_bcdlist[k].m_name, plainName);
+					qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";"EAFORMAT"\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, RTTI::classList[i].m_bcdlist[k].m_attribute);
+				}
+			}
+
+			UINT iIndex = 0;
+			for (ea_t eaAddress = RTTI::classList[i].m_start; eaAddress < RTTI::classList[i].m_end; eaAddress += sizeof(ea_t)) {
+				char memberName[MAXSTR] = "";
+				ea_t eaMember = vftable::getMemberName(memberName, eaAddress);
+				if (BADADDR != eaMember)
+				{
+					qfprintf(fClassMembers, "%d;%d;\"%s\";"EAFORMAT";"EAFORMAT"\n", i, iIndex, memberName, eaAddress, eaMember);
+				}
+				iIndex++;
+			}
+			//msgR("\t\tClasses:\t%d '%s' from '%s'\n", i, szClassDef, szClass);
+		}
+	}
+#ifndef __DEBUG
+	CATCHTRUE()
 #endif
+	return(FALSE);
+}
+
+
+static BOOL dumpFuncs()
+{
+#ifndef __DEBUG
+	try
+#endif
+	{
+		for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
+		{
+			if (0 == i % 100)
+				msgR("\t\t%35s Funcs:\t% 7d of % 7d\n", "Dump funcs called from classes:", i + 1, RTTI::classList.size());
+
+			UINT index = RTTI::classPKeys[i].index;
+			RTTI::classInfo aCI = RTTI::classList[index];
+			vftable::VFMemberList aML = RTTI::vfTableList[index];
+			//::qsnprintf(szClassExport, MAXSTR - 1, "//\txclass '%s' vft:"EAFORMAT, aCI.m_className, aCI.m_vft);
+			//qfprintf(fClassIncTemp, "%s\n", szClassExport);
+			for (UINT m = 0; m < aML.size(); m++)
+			{
+				strcpy_s(THEprefix, "  ");
+				//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sclass '%s' member I:%d "EAFORMAT, THEprefix, aCI.m_className, m, aML[m].member);
+				//qfprintf(fClassIncTemp, "%s\n", szClassExport);
+				char funcFromName[MAXSTR] = "";
+				func_t* funcFrom = get_func(aML[m].member);
+				if (funcFrom)
+					LookupFuncFromName(funcFrom, index, 0, funcFromName, fClassIncTemp);
+			}
+		}
+
+		UINT fq = get_func_qty();
+		for (UINT index = 0; index < fq; index++)
+		{
+			if (0 == index % 100)
+				msgR("\t\t%35s Funcs:\t% 7d of % 7d\n", "Looking for xref to functions:", index + 1, fq);
+
+			strcpy_s(THEprefix, "  ");
+			char funcFromName[MAXSTR] = "";
+			func_t* funcTo = getn_func(index);
+			if (funcTo)
+				if (LookupFuncToName(funcTo, index, 0, funcFromName, fClassIncTemp))
+					/*qfprintf(fClassIncTemp, "\n")*/;
+		}
 	}
 #ifndef __DEBUG
 	CATCH()
@@ -3094,14 +3092,32 @@ static BOOL getRttiData()
         if(findVftables())
             return(TRUE);
 
-        if (dumpVftables())
-            return(TRUE);
+		if (OpenFiles())
+#ifndef __DEBUG
+			try
+#endif
+		{
+			if (dumpVftables())
+				return(TRUE);
 
-        // colList = COLs left that don't have a vft reference
+			// colList = COLs left that don't have a vft reference
 
-        // Could use the unlocated ref lists typeDescList & colList around for possible separate listing, etc.
-        // They get cleaned up on return of this function anyhow.
-    }
+			// Could use the unlocated ref lists typeDescList & colList around for possible separate listing, etc.
+			// They get cleaned up on return of this function anyhow.
+
+			if (dumpFuncs())
+				return(TRUE);
+
+			CloseFiles();
+		}
+#ifndef __DEBUG
+		catch (...)
+		{
+			CloseFiles();
+			msgR("** Exception in %s()! ***\n", __FUNCTION__);
+		}
+#endif
+	}
 #ifndef __DEBUG
 	CATCH()
 #endif
