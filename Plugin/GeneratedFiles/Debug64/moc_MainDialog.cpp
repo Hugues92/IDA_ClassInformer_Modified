@@ -6,7 +6,6 @@
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
 
-#include "stdafx.h"
 #include "../../MainDialog.h"
 #include <QtCore/qbytearray.h>
 #include <QtCore/qmetatype.h>

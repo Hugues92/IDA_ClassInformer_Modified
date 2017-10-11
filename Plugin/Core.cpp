@@ -425,7 +425,7 @@ void CORE_Process(int arg)
 
             msg("Working..\n");
             refreshUI();
-            WaitBox::show("Class Informer", "Please wait..", "url("STYLE_PATH"progress-style.qss)", ":/classinf/icon.png");
+            WaitBox::show("Class Informer", "Please wait..", "url(" STYLE_PATH "progress-style.qss)", ":/classinf/icon.png");
             WaitBox::updateAndCancelCheck(-1);
             s_startTime = getTimeStamp();
 
@@ -919,12 +919,12 @@ static void processRegisterInitterm(ea_t start, ea_t end, ea_t call)
             if (start > end)
                 swap_t(start, end);
 
-            msg("    "EAFORMAT" to "EAFORMAT" CTOR table.\n", start, end);
+            msg("    " EAFORMAT " to " EAFORMAT " CTOR table.\n", start, end);
             setIntializerTable(start, end, TRUE);
             set_cmt(call, "_initterm", TRUE);
         }
         else
-            msg("  ** Bad address range of "EAFORMAT", "EAFORMAT" for \"_initterm\" type ** <click address>.\n", start, end);
+            msg("  ** Bad address range of " EAFORMAT ", " EAFORMAT " for \"_initterm\" type ** <click address>.\n", start, end);
     }
 }
 
@@ -953,7 +953,7 @@ static UINT doInittermTable(func_t *func, ea_t start, ea_t end, LPCTSTR name)
                     // Start/ctor?
                     if (strstr(funcName, "cinit") || strstr(funcName, "tmaincrtstartup") || strstr(funcName, "start"))
                     {
-                        msg("    "EAFORMAT" to "EAFORMAT" CTOR table.\n", start, end);
+                        msg("    " EAFORMAT " to " EAFORMAT " CTOR table.\n", start, end);
                         setIntializerTable(start, end, TRUE);
                         found = TRUE;
                     }
@@ -961,7 +961,7 @@ static UINT doInittermTable(func_t *func, ea_t start, ea_t end, LPCTSTR name)
                     // Exit/dtor function?
                     if (strstr(funcName, "exit"))
                     {
-                        msg("    "EAFORMAT" to "EAFORMAT" DTOR table.\n", start, end);
+                        msg("    " EAFORMAT " to " EAFORMAT " DTOR table.\n", start, end);
                         setTerminatorTable(start, end);
                         found = TRUE;
                     }
@@ -971,16 +971,16 @@ static UINT doInittermTable(func_t *func, ea_t start, ea_t end, LPCTSTR name)
             if (!found)
             {
                 // Fall back to generic assumption
-                msg("    "EAFORMAT" to "EAFORMAT" CTOR/DTOR table.\n", start, end);
+                msg("    " EAFORMAT " to " EAFORMAT " CTOR/DTOR table.\n", start, end);
                 setCtorDtorTable(start, end);
                 found = TRUE;
             }
         }
         else
-            msg("    ** Miss matched segment table addresses "EAFORMAT", "EAFORMAT" for \"%s\" type **\n", start, end, name);
+            msg("    ** Miss matched segment table addresses " EAFORMAT ", " EAFORMAT " for \"%s\" type **\n", start, end, name);
     }
     else
-        msg("    ** Bad input address range of "EAFORMAT", "EAFORMAT" for \"%s\" type **\n", start, end, name);
+        msg("    ** Bad input address range of " EAFORMAT ", " EAFORMAT " for \"%s\" type **\n", start, end, name);
 
     return(found);
 }
@@ -996,7 +996,7 @@ static BOOL processInitterm(ea_t address, LPCTSTR name)
     ea_t xref = get_first_fcref_to(address);
     while (xref && (xref != BADADDR))
     {
-        msg("  "EAFORMAT" \"%s\" xref.\n", xref, name);
+        msg("  " EAFORMAT " \"%s\" xref.\n", xref, name);
 
         // Should be code
         if (isCode(get_flags_novalue(xref)))
@@ -1016,7 +1016,7 @@ static BOOL processInitterm(ea_t address, LPCTSTR name)
                 func_t *func = get_func(xref);
                 if (func && (instruction2 < func->startEA))
                 {
-                    //msg("   "EAFORMAT" arg2 outside of contained function **\n", func->startEA);
+                    //msg("   " EAFORMAT " arg2 outside of contained function **\n", func->startEA);
                     break;
                 }
 
@@ -1049,7 +1049,7 @@ static BOOL processInitterm(ea_t address, LPCTSTR name)
                         ea_t start = (instruction1 + 7 + *((PINT) &startOffset)); // TODO: 7 is hard coded instruction length, put this in arg2pat table?
                         ea_t end   = (instruction2 + 7 + *((PINT) &endOffset));
                         #endif
-                        msg("  "EAFORMAT" Two instruction pattern match #%d\n", match, i);
+                        msg("  " EAFORMAT " Two instruction pattern match #%d\n", match, i);
                         count += doInittermTable(func, start, end, name);
                         matched = TRUE;
                         break;
@@ -1066,7 +1066,7 @@ static BOOL processInitterm(ea_t address, LPCTSTR name)
 
                     if (func && (searchStart < func->startEA))
                     {
-                        msg("  "EAFORMAT" arg3 outside of contained function **\n", func->startEA);
+                        msg("  " EAFORMAT " arg3 outside of contained function **\n", func->startEA);
                         break;
                     }
 
@@ -1082,7 +1082,7 @@ static BOOL processInitterm(ea_t address, LPCTSTR name)
             } while (FALSE);
         }
         else
-            msg("  "EAFORMAT" ** \"%s\" xref is not code! **\n", xref, name);
+            msg("  " EAFORMAT " ** \"%s\" xref is not code! **\n", xref, name);
 
         xref = get_next_fcref_to(address, xref);
     };
@@ -1188,7 +1188,7 @@ static BOOL processStaticTables()
                 ea_t match = find_binary(cinitFunc->startEA, cinitFunc->endEA, pat[i].pattern, 16, (SEARCH_DOWN | SEARCH_NOBRK | SEARCH_NOSHOW));
                 while (match != BADADDR)
                 {
-                    msg("  "EAFORMAT" Register _initterm(), pattern #%d.\n", match, i);
+                    msg("  " EAFORMAT " Register _initterm(), pattern #%d.\n", match, i);
                     ea_t start = getEa(match + pat[i].start);
                     ea_t end   = getEa(match + pat[i].end);
                     processRegisterInitterm(start, end, (match + pat[i].call));
@@ -1402,7 +1402,7 @@ static BOOL scanSeg4Cols(segment_t *seg)
     char name[64];
     if (get_true_segm_name(seg, name, SIZESTR(name)) <= 0)
         strcpy(name, "???");
-    msgR(" N: \"%s\", A: "EAFORMAT" - "EAFORMAT", S: %s.\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
+    msgR(" N: \"%s\", A: " EAFORMAT " - " EAFORMAT ", S: %s.\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
 
     UINT found = 0;
     if (seg->size() >= sizeof(RTTI::_RTTICompleteObjectLocator))
@@ -1574,7 +1574,7 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
     char name[64];
     if (get_true_segm_name(seg, name, SIZESTR(name)) <= 0)
         strcpy(name, "???");
-    msgR(" N: \"%s\", A: "EAFORMAT"-"EAFORMAT", S: %s. Pass 1\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
+    msgR(" N: \"%s\", A: " EAFORMAT "-" EAFORMAT ", S: %s. Pass 1\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
 
 	RTTI::maxClassNameLength = 0;
     UINT found = 0;
@@ -1612,7 +1612,7 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
         }
 		if (found)
 		{
-			msgR(" N: \"%s\", A: "EAFORMAT"-"EAFORMAT", S: %s. Pass 2\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
+			msgR(" N: \"%s\", A: " EAFORMAT "-" EAFORMAT ", S: %s. Pass 2\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
 			for (UINT i = 0; i < RTTI::classList.size(); i++)
 				RTTI::classList[i].m_done = false;
 			for (ea_t ptr = startEA; ptr < endEA; ptr += sizeof(UINT))  //sizeof(ea_t)
@@ -1929,11 +1929,11 @@ size_t dumpClassMember(FILE* f, member_t* member, size_t fullSize, LPSTR classNa
 	tinfo_t tif;
 	if (get_member_tinfo2(member, &tif))
 	{
-		//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" **\n", className, fullSize, desiredOffset, nextOffset, member, tif);
+		//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " **\n", className, fullSize, desiredOffset, nextOffset, member, tif);
 		noTif = false;
 		if (tif.get_type_name(&typeName))
 		{
-			//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" type:%s **\n", className, fullSize, desiredOffset, nextOffset, member, tif, typeName.c_str());
+			//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " type:%s **\n", className, fullSize, desiredOffset, nextOffset, member, tif, typeName.c_str());
 			found = true;
 		}
 		else
@@ -1941,12 +1941,12 @@ size_t dumpClassMember(FILE* f, member_t* member, size_t fullSize, LPSTR classNa
 			tif.get_realtype(false);
 			if (tif.get_type_name(&typeName))
 			{
-				//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" real type:%s **\n", className, fullSize, desiredOffset, nextOffset, member, tif, typeName.c_str());
+				//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " real type:%s **\n", className, fullSize, desiredOffset, nextOffset, member, tif, typeName.c_str());
 				found = true;
 			}
 			else
 			{
-				//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" no type **\n", className, fullSize, desiredOffset, nextOffset, member, tif);
+				//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " no type **\n", className, fullSize, desiredOffset, nextOffset, member, tif);
 				if (tif.is_signed())
 					typeName.cat_sprnt("signed ");
 				if (tif.is_unsigned())
@@ -1958,12 +1958,12 @@ size_t dumpClassMember(FILE* f, member_t* member, size_t fullSize, LPSTR classNa
 					{
 						if (data.elem_type.get_type_name(&typeName))
 						{
-							//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" array:%s **\n", className, fullSize, desiredOffset, nextOffset, member, data.elem_type, typeName.c_str());
+							//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " array:%s **\n", className, fullSize, desiredOffset, nextOffset, member, data.elem_type, typeName.c_str());
 							found = true;
 						}
 						else
 						{
-							//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" array **\n", className, fullSize, desiredOffset, nextOffset, member, data.elem_type);
+							//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " array **\n", className, fullSize, desiredOffset, nextOffset, member, data.elem_type);
 						}
 						endName.cat_sprnt("[%d]", data.nelems);
 					}
@@ -1976,13 +1976,13 @@ size_t dumpClassMember(FILE* f, member_t* member, size_t fullSize, LPSTR classNa
 					{
 						if (data.obj_type.get_type_name(&typeName))
 						{
-							//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" pointer:%s **\n", className, fullSize, desiredOffset, nextOffset, member, data.obj_type, typeName.c_str());
+							//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " pointer:%s **\n", className, fullSize, desiredOffset, nextOffset, member, data.obj_type, typeName.c_str());
 							typeName.cat_sprnt("*");
 							found = true;
 						}
 						else
 						{
-							//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" tif:"EAFORMAT" pointer **\n", className, fullSize, desiredOffset, nextOffset, member, data.obj_type);
+							//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " tif:" EAFORMAT " pointer **\n", className, fullSize, desiredOffset, nextOffset, member, data.obj_type);
 						}
 					}
 				}
@@ -1991,7 +1991,7 @@ size_t dumpClassMember(FILE* f, member_t* member, size_t fullSize, LPSTR classNa
 	}
 	if (!found)
 	{
-		//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" not found (flag:"EAFORMAT") **\n", className, fullSize, desiredOffset, nextOffset, member, member->flag);
+		//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " not found (flag:" EAFORMAT ") **\n", className, fullSize, desiredOffset, nextOffset, member, member->flag);
 		//if (isUnsigned(member->flag))
 		//	typeName.cat_sprnt("*");
 		if (isInt(member->flag))
@@ -2010,7 +2010,7 @@ size_t dumpClassMember(FILE* f, member_t* member, size_t fullSize, LPSTR classNa
 			typeName.cat_sprnt("*");
 	}
 
-	//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" **\n", className, fullSize, desiredOffset, nextOffset, member);
+	//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " **\n", className, fullSize, desiredOffset, nextOffset, member);
 	if (!skipBases || 0 == strstr(szName, "baseName")) {
 		::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s	%s%s;\t// %04X %s", typeName.c_str(), szName, endName.c_str(), currentOffset, szCmnt);
 		qfprintf(f, "%s\n", szClassExport);
@@ -2022,7 +2022,7 @@ void dumpVFTold(FILE* f, RTTI::classInfo *ci, RTTI::classInfo *ci2, bool transla
 {
 	char szClassExport[MAXSTR] = "";
 	UINT iCount = (ci->m_end - ci->m_start) / sizeof(ea_t);
-	::qsnprintf(szClassExport, (MAXSTR - 1), "\t// %s %6d virtual funcs from "EAFORMAT" to "EAFORMAT"",
+	::qsnprintf(szClassExport, (MAXSTR - 1), "\t// %s %6d virtual funcs from " EAFORMAT " to " EAFORMAT "",
 		ci->m_className, iCount, ci->m_start, ci->m_end);
 	qfprintf(f, "%s\n", szClassExport);
 	UINT iIndex = 0;
@@ -2039,7 +2039,7 @@ void dumpVFTold(FILE* f, RTTI::classInfo *ci, RTTI::classInfo *ci2, bool transla
 				sz = memberName + strlen(ci->m_cTypeName) + 2;
 			else
 				sz = memberName;
-			::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s\tvirtual int %s%s%s();\t// %04X "EAFORMAT" "EAFORMAT"",
+			::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s\tvirtual int %s%s%s();\t// %04X " EAFORMAT " " EAFORMAT "",
 				(BADADDR == eaMember) || !(isThisClass || noClass) ? "//" : "", ci2 && !noClass ? ci2->m_className : "", ci2 || noClass ? "::" : "", sz, iIndex,
 				eaAddress, eaMember);
 			qfprintf(f, "%s\n", szClassExport);
@@ -2066,7 +2066,7 @@ void dumpVFT(FILE* f, RTTI::classInfo *ci, RTTI::classInfo *ci2, vftable::VFMemb
 	else
 		sc = ci->m_className;
 	UINT iCount = (end - start) / sizeof(ea_t);
-	::qsnprintf(szClassExport, (MAXSTR - 1), "\t// %s %6d virtual funcs from "EAFORMAT" to "EAFORMAT"",
+	::qsnprintf(szClassExport, (MAXSTR - 1), "\t// %s %6d virtual funcs from " EAFORMAT " to " EAFORMAT "",
 		sc, iCount, start, end);
 	qfprintf(f, "%s\n", szClassExport);
 	size_t maxLen = 0;
@@ -2118,7 +2118,7 @@ void dumpVFT(FILE* f, RTTI::classInfo *ci, RTTI::classInfo *ci2, vftable::VFMemb
 					showFullName = !ei.isDefault;
 				}
 				while (sz.length() < maxLen) sz += ' ';
-				::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s\tvirtual int %s%s%s();\t// %04X "EAFORMAT" "EAFORMAT" %s %s",
+				::qsnprintf(szClassExport, (MAXSTR - 1), "\t%s\tvirtual int %s%s%s();\t// %04X " EAFORMAT " " EAFORMAT " %s %s",
 					(BADADDR == eaMember) || ei.IsIdentical() ? "//" : "", ci2 && !noClass ? ci2->m_className : "", ci2 && !noClass ? "::" : "", sz.c_str(), iIndex,
 					eaAddress, eaMember, showFullName ? ei.fullName.c_str() : "", ei.typeName.c_str());
 				qfprintf(f, "%s\n", szClassExport);
@@ -2199,7 +2199,7 @@ void dumpClassMembersOld(FILE* f, RTTI::classInfo aCI, bool translate, bool hpp)
 			if (BADADDR == n)
 				n = fullSize;
 		}
-		//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" **\n", aCI.m_className, fullSize, o, n, member);
+		//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " **\n", aCI.m_className, fullSize, o, n, member);
 		if (n > j)
 			if (j + sizeof(ea_t) <= n)
 			{
@@ -2336,7 +2336,7 @@ void dumpClassMembers(FILE* f, RTTI::classInfo aCI, vftable::VFMemberList aML, b
 			if (BADADDR == n)
 				n = fullSize;
 		}
-		//msgR(" ** %s.             : size:%d at offset:%d, next:"EAFORMAT", member:"EAFORMAT" **\n", aCI.m_className, fullSize, o, n, member);
+		//msgR(" ** %s.             : size:%d at offset:%d, next:" EAFORMAT ", member:" EAFORMAT " **\n", aCI.m_className, fullSize, o, n, member);
 		if (n > j)
 			if (j + sizeof(ea_t) <= n)
 			{
@@ -2398,7 +2398,7 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 					RTTI::ReplaceForCTypeName(funcToName, fN.c_str());
 			}
 			UINT callIndex = 0;
-			::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s` "EAFORMAT" at level %d for index %d", THEprefix, funcToName, funcTo->startEA, level, index);
+			::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s` " EAFORMAT " at level %d for index %d", THEprefix, funcToName, funcTo->startEA, level, index);
 			qfprintf(f, "%s\n", szClassExport);
 			for (bool ok = xb.first_to(funcTo->startEA, XREF_ALL); ok; ok = xb.next_to())
 			{
@@ -2419,7 +2419,7 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 							RTTI::ReplaceForCTypeName(funcName, fN.c_str());
 						else
 							strcpy_s(funcName, "NONAME__");
-						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s` "EAFORMAT" : From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s` " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
 							THEprefix, funcToName, funcTo->startEA, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
 						qfprintf(f, "%s\n", szClassExport);
 						//msgR("%s\n", szClassExport);
@@ -2469,7 +2469,7 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 	if (optionIterLevels > level)
 		for (ea_t eaCurr = funcFrom->startEA; eaCurr < funcFrom->endEA; eaCurr = nextaddr(eaCurr))
 		{
-			//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' "EAFORMAT" at level %d for index %d", THEprefix, funcFromName, eaCurr, level, index);
+			//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " at level %d for index %d", THEprefix, funcFromName, eaCurr, level, index);
 			//qfprintf(f, "%s\n", szClassExport);
 			//strcat_s(THEprefix, "  ");
 			for (bool ok = xb.first_from(eaCurr, XREF_FAR); ok; ok = xb.next_from())
@@ -2482,14 +2482,14 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 					else
 						strcpy_s(funcName, "NONAME__");
 				}
-				//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' "EAFORMAT" : To:"EAFORMAT" '%s'",
+				//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " '%s'",
 				//	THEprefix, funcFromName, eaCurr, xb.to, funcName);
 				//qfprintf(f, "%s\n", szClassExport);
 				func_t* funcTo = get_func(xb.to);
 				if (funcTo && (funcTo->startEA != funcFrom->startEA))
 				{
 					callIndex++;
-					//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' "EAFORMAT" : To:"EAFORMAT" Func:"EAFORMAT,
+					//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " Func:" EAFORMAT,
 					//	THEprefix, funcFromName, eaCurr, xb.to, funcTo ? funcTo->startEA : BADADDR);
 					//qfprintf(f, "%s\n", szClassExport);
 					flags_t funcToFlags = getFlags(funcTo->startEA);
@@ -2505,7 +2505,7 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 						char newFuncName[MAXSTR] = "";
 						::qsnprintf(funcToName, MAXSTR - 1, "%s%s_to%0.4d", strstr(funcFromName, "__ICI__") ? "" : "__ICI__", 
 							strlen(funcFromName) ? funcFromName : "NONAME__", callIndex);
-						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' "EAFORMAT" : To:"EAFORMAT" Func:"EAFORMAT" '%s' changed to '%s'",
+						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " Func:" EAFORMAT " '%s' changed to '%s'",
 							THEprefix, funcFromName, eaCurr, xb.to, funcTo ? funcTo->startEA : BADADDR, funcName, funcToName);
 						qfprintf(f, "%s\n", szClassExport);
 						//msgR("%s\n", szClassExport);
@@ -2580,7 +2580,7 @@ static BOOL dumpVftables()
 						if (get_long_name(&fN, funcFrom->startEA))
 							strncpy(funcName, fN.c_str(), (MAXSTR - 1));
 					}
-					::qsnprintf(szClassExport, MAXSTR - 1, "//\txref to %s::`vftable` "EAFORMAT" : From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+					::qsnprintf(szClassExport, MAXSTR - 1, "//\txref to %s::`vftable` " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
 						aCI.m_className, aCI.m_vft, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
 					qfprintf(fClassInc, "%s\n", szClassExport);
 					//msgR("%s\n", szClassExport);
@@ -2588,7 +2588,7 @@ static BOOL dumpVftables()
 
 					if (isAllocation)
 					{
-						::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : inline:"EAFORMAT" ",
+						::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:" EAFORMAT " : inline:" EAFORMAT " ",
 							aCI.m_className, amount, aCI.m_vft, xb.from);
 						qfprintf(fClassInc, "%s\n", szClassExport);
 						if (lastAmount)
@@ -2630,13 +2630,13 @@ static BOOL dumpVftables()
 											if (get_long_name(&fN, funcFromJump->startEA))
 												strncpy(funcName, fN.c_str(), (MAXSTR - 1));
 										}
-										//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : jump:"EAFORMAT" From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+										//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' " EAFORMAT " : jump:" EAFORMAT " From:" EAFORMAT " Func:" EAFORMAT " '%s'",
 										//	aCI.m_classname, aCI.m_vft, funcFrom->startEA, xbj.from, funcFromJump ? funcFromJump->startEA : BADADDR, funcName);
 										//qfprintf(fClassInc, "%s\n", szClassExport);
 										isAllocation = RTTI::checkForAllocationPattern(xbj.from, &amount);
 										if (isAllocation)
 										{
-											::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : constructor:"EAFORMAT" ",
+											::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:" EAFORMAT " : constructor:" EAFORMAT " ",
 												aCI.m_cTypeName, amount, aCI.m_vft, funcFrom->startEA);
 											qfprintf(fClassInc, "%s\n", szClassExport);
 											makeConstructor(funcFrom, aCI.m_cTypeName, aCI, amount, i);
@@ -2652,21 +2652,21 @@ static BOOL dumpVftables()
 								}
 								//else
 								//{
-								//	::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : call:"EAFORMAT" %x",
+								//	::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' " EAFORMAT " : call:" EAFORMAT " %x",
 								//		aCI.m_classname, aCI.m_vft, funcFrom->startEA, b);
 								//	qfprintf(fClassInc, "%s\n", szClassExport);
 								//}
 							}
 							if (!done)
 							{
-								//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' "EAFORMAT" : xref:"EAFORMAT" From:"EAFORMAT" Func:"EAFORMAT" '%s'",
+								//::qsnprintf(szClassExport, MAXSTR - 1, "//\t'%s' " EAFORMAT " : xref:" EAFORMAT " From:" EAFORMAT " Func:" EAFORMAT " '%s'",
 								//	aCI.m_classname, aCI.m_vft, funcFrom->startEA, xbp.from,
 								//	funcFromParent ? funcFromParent->startEA : BADADDR, funcName);
 								//qfprintf(fClassInc, "%s\n", szClassExport);
 								isAllocation = RTTI::checkForAllocationPattern(xbp.from, &amount);
 								if (isAllocation)
 								{
-									::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:"EAFORMAT" : constructor:"EAFORMAT" ",
+									::qsnprintf(szClassExport, MAXSTR - 1, "#define __ICI__%s__size %6d // vft:" EAFORMAT " : constructor:" EAFORMAT " ",
 										aCI.m_cTypeName, amount, aCI.m_vft, funcFrom->startEA);
 									qfprintf(fClassInc, "%s\n", szClassExport);
 									makeConstructor(funcFrom, aCI.m_cTypeName, aCI, amount, i);
@@ -2778,7 +2778,7 @@ static BOOL dumpVftables()
 					::qsnprintf(szClassExport, (MAXSTR - 1), "  	extern const void * RTTI_%s;", RTTI::classList[index].m_className);
 					qfprintf(fClassRTTI, "%s\n", szClassExport);
 
-					::qsnprintf(szClassExport, (MAXSTR - 1), "  	const void * RTTI_%s = (void*)0x"EAFORMAT";",
+					::qsnprintf(szClassExport, (MAXSTR - 1), "  	const void * RTTI_%s = (void*)0x" EAFORMAT ";",
 						RTTI::classList[index].m_className, ea);
 					qfprintf(fClassRTTIinl, "%s\n", szClassExport);
 				}
@@ -2978,7 +2978,7 @@ static BOOL dumpVftables()
 			UINT parentCount = RTTI::classList[i].m_numBaseClasses;
 
 			UINT iCount = (RTTI::classList[i].m_end - RTTI::classList[i].m_start) / sizeof(ea_t);
-			qfprintf(fClass, "%d;\"%s\";\"%s\";"EAFORMAT";"EAFORMAT";"EAFORMAT";"EAFORMAT";%d;%d;%d;%d;%d\n", i, RTTI::classList[i].m_className,
+			qfprintf(fClass, "%d;\"%s\";\"%s\";" EAFORMAT ";" EAFORMAT ";" EAFORMAT ";" EAFORMAT ";%d;%d;%d;%d;%d\n", i, RTTI::classList[i].m_className,
 				RTTI::classList[i].m_colName, RTTI::classList[i].m_vft, RTTI::classList[i].m_col, RTTI::classList[i].m_start, RTTI::classList[i].m_end, iCount,
 				parentCount, RTTI::classList[i].m_baseClassIndex, RTTI::classList[i].m_templateInfo.m_template, RTTI::classList[i].m_templateInfo.m_templateTypeCount);
 			//msgR("\t\tClasses:\t%d '%s' from '%s' and '%s'\n", i, szClassDef, szClass, RTTI::classList[i].m_classname);
@@ -2990,7 +2990,7 @@ static BOOL dumpVftables()
 				{
 					char plainName[MAXSTR];
 					getPlainTypeName(RTTI::classList[i].m_bcdlist[k].m_name, plainName);
-					qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";"EAFORMAT"\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, RTTI::classList[i].m_bcdlist[k].m_attribute);
+					qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";" EAFORMAT "\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, RTTI::classList[i].m_bcdlist[k].m_attribute);
 				}
 			}
 
@@ -3000,7 +3000,7 @@ static BOOL dumpVftables()
 				ea_t eaMember = vftable::getMemberName(memberName, eaAddress);
 				if (BADADDR != eaMember)
 				{
-					qfprintf(fClassMembers, "%d;%d;\"%s\";"EAFORMAT";"EAFORMAT"\n", i, iIndex, memberName, eaAddress, eaMember);
+					qfprintf(fClassMembers, "%d;%d;\"%s\";" EAFORMAT ";" EAFORMAT "\n", i, iIndex, memberName, eaAddress, eaMember);
 				}
 				iIndex++;
 			}
@@ -3028,12 +3028,12 @@ static BOOL dumpFuncs()
 			UINT index = RTTI::classPKeys[i].index;
 			RTTI::classInfo aCI = RTTI::classList[index];
 			vftable::VFMemberList aML = RTTI::vfTableList[index];
-			//::qsnprintf(szClassExport, MAXSTR - 1, "//\txclass '%s' vft:"EAFORMAT, aCI.m_className, aCI.m_vft);
+			//::qsnprintf(szClassExport, MAXSTR - 1, "//\txclass '%s' vft:" EAFORMAT, aCI.m_className, aCI.m_vft);
 			//qfprintf(fClassIncTemp, "%s\n", szClassExport);
 			for (UINT m = 0; m < aML.size(); m++)
 			{
 				strcpy_s(THEprefix, "  ");
-				//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sclass '%s' member I:%d "EAFORMAT, THEprefix, aCI.m_className, m, aML[m].member);
+				//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sclass '%s' member I:%d " EAFORMAT, THEprefix, aCI.m_className, m, aML[m].member);
 				//qfprintf(fClassIncTemp, "%s\n", szClassExport);
 				char funcFromName[MAXSTR] = "";
 				func_t* funcFrom = get_func(aML[m].member);

@@ -47,7 +47,7 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
 
 	if(!properVFT)
 	{
-		msg("\t\t\tUnreferenced vftable: "EAFORMAT": "EAFORMAT"-"EAFORMAT", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
+		msg("\t\t\tUnreferenced vftable: " EAFORMAT ": " EAFORMAT "-" EAFORMAT ", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
 		return(FALSE);
 	}
 	else
@@ -138,13 +138,13 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
         if ((info.methodCount = ((ea - start) / sizeof(ea_t))) > 0)
         {
             info.end = ea;
-            //msg(" vftable: "EAFORMAT"-"EAFORMAT", methods: %d\n", rtInfo.eaStart, rtInfo.eaEnd, rtInfo.uMethods);
+            //msg(" vftable: " EAFORMAT "-" EAFORMAT ", methods: %d\n", rtInfo.eaStart, rtInfo.eaEnd, rtInfo.uMethods);
             return(TRUE);
         }
     }
 
     if (BADADDR != ea)
-        msg("\t\t\tCannot interpret vftable: "EAFORMAT": "EAFORMAT"-"EAFORMAT", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
+        msg("\t\t\tCannot interpret vftable: " EAFORMAT ": " EAFORMAT "-" EAFORMAT ", methods: %d, Motive=%d\n", ea, info.start, info.end, info.methodCount, motive);
 	// dumpFlags(ea);
     return(FALSE);
 }
@@ -202,7 +202,7 @@ qstring getNonDefaultComment(flags_t f, ea_t ea, LPCSTR defaultComment)
 					{
 						// invalid usage of a function member
 						strcpy_s(s, "");
-						//msg(" "EAFORMAT" [%s] av:%x dv:%x [%s]\n", ea, defaultComment, av, dv, s);
+						//msg(" " EAFORMAT " [%s] av:%x dv:%x [%s]\n", ea, defaultComment, av, dv, s);
 					}
 				}
 				else
@@ -258,7 +258,7 @@ void typeMember(ea_t eaMember, tinfo_t tif, bool edit)
 	{
 		fi.dump(&s);
 	}
-	//msg(" "EAFORMAT" ** %s : '%s' ** \n", eaMember, edit ? "typed" : "guessed", s.c_str());
+	//msg(" " EAFORMAT " ** %s : '%s' ** \n", eaMember, edit ? "typed" : "guessed", s.c_str());
 }
 
 void guessMember(ea_t eaMember)
@@ -275,7 +275,7 @@ void guessMember(ea_t eaMember)
 				guessed = true;
 			}
 			else
-				msg(" "EAFORMAT" ** not guessed ** \n", eaMember);
+				msg(" " EAFORMAT " ** not guessed ** \n", eaMember);
 		else
 		{
 			typeMember(eaMember, tif, true);
@@ -638,7 +638,7 @@ bool vftable::IsClass(LPCSTR szClassName, LPSTR szCurrName, bool translate)
 	//if (translate) msg("  ** IsClass? '%s' for '%s' **\n", szBase, szClassName);
 	while (stristr(szBase, "j_") == szBase)
 	{
-		//msg("  "EAFORMAT" ** Jumping member %s for %s **\n", eaMember, szBase, szClassName);
+		//msg("  " EAFORMAT " ** Jumping member %s for %s **\n", eaMember, szBase, szClassName);
 		szBase += 2;
 	}
 	result = (stristr(szBase, szClassName) == szBase);
@@ -661,14 +661,14 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 	char * szBase = szCurrName;
 	while (stristr(szBase, "j_") == szBase)
 	{
-		//msg("  "EAFORMAT" ** Jumping member %s for %s **\n", eaMember, szBase, szClassName);
+		//msg("  " EAFORMAT " ** Jumping member %s for %s **\n", eaMember, szBase, szClassName);
 		isJump = true;
 		szBase += 2;
 	}
 	LPCSTR szi = strstr(szBase, "___");	// Corrects a bug in previous version of Modified
 	if (szi && (szBase + (strlen(szBase) - 3) == szi))
 	{
-		//msg("  "EAFORMAT" ** Bugged member %s for %s as %s **\n", eaMember, sz, szClassName, szCurrName);
+		//msg("  " EAFORMAT " ** Bugged member %s for %s as %s **\n", eaMember, sz, szClassName, szCurrName);
 		return true;
 	}
 	char demangledName[MAXSTR] = "";
@@ -694,29 +694,29 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 	}
 	if (stristr(szBase, szGoodName) == szBase)
 	{
-		//msg("  "EAFORMAT" ** IsClass member %s for %s **\n", eaMember, szBase, szClassName);
+		//msg("  " EAFORMAT " ** IsClass member %s for %s **\n", eaMember, szBase, szClassName);
 		isClass = true;
 		szBase += strlen(szGoodName);
 		if (szBase && szBase[0] == '_')
 		{
-			//msg("  "EAFORMAT" ** Underscored member %s for %s **\n", eaMember, szBase, szClassName);
+			//msg("  " EAFORMAT " ** Underscored member %s for %s **\n", eaMember, szBase, szClassName);
 			isUnderscore = true;
 			szBase++;
 			if (szBase && szBase[0] == '_')
 			{
-				//msg("  "EAFORMAT" ** DblUnderscored member %s for %s **\n", eaMember, szBase, szClassName);
+				//msg("  " EAFORMAT " ** DblUnderscored member %s for %s **\n", eaMember, szBase, szClassName);
 				isUnderscore = true;
 				szBase++;
 			}
 		}
 		else if (szBase && szBase[0] == ':')
 		{
-			//msg("  "EAFORMAT" ** Colon member %s for %s **\n", eaMember, szBase, szClassName);
+			//msg("  " EAFORMAT " ** Colon member %s for %s **\n", eaMember, szBase, szClassName);
 			isColon = true;
 			szBase++;
 			if (szBase && szBase[0] == ':')
 			{
-				//msg("  "EAFORMAT" ** DblColon member %s for %s **\n", eaMember, szBase, szClassName);
+				//msg("  " EAFORMAT " ** DblColon member %s for %s **\n", eaMember, szBase, szClassName);
 				isDblColon = true;
 				isColon = false;
 				szBase++;
@@ -724,7 +724,7 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 		}
 		else if (szBase && szBase[0] == '.')
 		{
-			//msg("  "EAFORMAT" ** Dot member %s for %s **\n", eaMember, szBase, szClassName);
+			//msg("  " EAFORMAT " ** Dot member %s for %s **\n", eaMember, szBase, szClassName);
 			isDot = true;
 			szBase++;
 		}
@@ -733,23 +733,23 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 	{
 		if (stristr(szBase, "unk") == szBase)
 		{
-			//msg("  "EAFORMAT" ** Unk member %s for %s **\n", eaMember, szBase, szClassName);
+			//msg("  " EAFORMAT " ** Unk member %s for %s **\n", eaMember, szBase, szClassName);
 			isUnk = true;
 			szBase += strlen("unk");
 			if (szBase && szBase[0] == '_')
 			{
 				szBase++;
-				//msg("  "EAFORMAT" ** Unk underscored member %s for %s **\n", eaMember, szBase, szClassName);
+				//msg("  " EAFORMAT " ** Unk underscored member %s for %s **\n", eaMember, szBase, szClassName);
 			}
 		}
 		if (stristr(szBase, "Func") == szBase)
 		{
-			//msg("  "EAFORMAT" ** Func member %s for %s **\n", eaMember, szBase, szClassName);
+			//msg("  " EAFORMAT " ** Func member %s for %s **\n", eaMember, szBase, szClassName);
 			isFunc = true;
 			szBase += strlen("Func");
 			if (szBase && szBase[0] == '_')
 			{
-				//msg("  "EAFORMAT" ** Func underscored member %s for %s **\n", eaMember, szBase, szClassName);
+				//msg("  " EAFORMAT " ** Func underscored member %s for %s **\n", eaMember, szBase, szClassName);
 				szBase++;
 			}
 		}
@@ -757,7 +757,7 @@ bool vftable::IsDefault(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR szClassName
 		{
 			int number = (int)strtol(szBase, NULL, 16);
 			if (number == iIndex) {
-				//msg("  "EAFORMAT" ** Hexadecimal member %s for %s **\n", eaMember, szBase, szClassName);
+				//msg("  " EAFORMAT " ** Hexadecimal member %s for %s **\n", eaMember, szBase, szClassName);
 				return true;
 			}
 		}
@@ -775,10 +775,10 @@ bool vftable::IsMember(ea_t vft, ea_t eaMember, UINT iIndex, LPSTR szCurrName, L
 	LPSTR szSep = NULL;
 	LPSTR szLastSep = NULL;
 	*szMember = szCurrName;
-	//msg("  "EAFORMAT" ** Checking member '%s' **\n", eaMember, *szMember);
+	//msg("  " EAFORMAT " ** Checking member '%s' **\n", eaMember, *szMember);
 	while (stristr(*szMember, "j_") == *szMember)
 	{
-		//msg("  "EAFORMAT" ** Jumping member '%s' **\n", eaMember, *szMember);
+		//msg("  " EAFORMAT " ** Jumping member '%s' **\n", eaMember, *szMember);
 		isJump = true;
 		*szMember += 2;
 	}
@@ -795,28 +795,28 @@ bool vftable::IsMember(ea_t vft, ea_t eaMember, UINT iIndex, LPSTR szCurrName, L
 	bool isFunc = false;
 	while (szSep = strstr(*szMember, "::"))
 	{
-		//msg("  "EAFORMAT" ** DblColon member '%s' **\n", eaMember, szSep, *szMember);
+		//msg("  " EAFORMAT " ** DblColon member '%s' **\n", eaMember, szSep, *szMember);
 		isMember = true;
 		*szMember = szSep + 2;
 		szLastSep = szSep;
 	}
 	while (szSep = strstr(*szMember, "__"))
 	{
-		//msg("  "EAFORMAT" ** DblColon member '%s' **\n", eaMember, szSep, *szMember);
+		//msg("  " EAFORMAT " ** DblColon member '%s' **\n", eaMember, szSep, *szMember);
 		isMember = true;
 		*szMember = szSep + 2;
 		szLastSep = szSep;
 	}
 	while (szSep = strstr(*szMember, ":"))
 	{
-		//msg("  "EAFORMAT" ** Colon member '%s' **\n", eaMember, szSep, *szMember);
+		//msg("  " EAFORMAT " ** Colon member '%s' **\n", eaMember, szSep, *szMember);
 		isMember = true;
 		*szMember = szSep + 1;
 		szLastSep = szSep;
 	}
 	while (szSep = strstr(*szMember, "."))
 	{
-		//msg("  "EAFORMAT" ** Dot member '%s' **\n", eaMember, szSep, *szMember);
+		//msg("  " EAFORMAT " ** Dot member '%s' **\n", eaMember, szSep, *szMember);
 		isMember = true;
 		*szMember = szSep + 1;
 		szLastSep = szSep;
@@ -826,7 +826,7 @@ bool vftable::IsMember(ea_t vft, ea_t eaMember, UINT iIndex, LPSTR szCurrName, L
 		UINT offsetJump = isJump ? 2 : 0;
 		strncpy_s(szBaseName, MAXSTR - 1, szCurrName + offsetJump, strlen(szCurrName) - strlen(szLastSep) - offsetJump);
 	}
-	//msg("  "EAFORMAT" ** (%d), Sep:'%s' Member:'%s' Base:'%s' BaseLen:%d **\n", eaMember, isMember, szLastSep, *szMember, szBaseName, szLastSep ? strlen(szCurrName) - strlen(szLastSep) : 0);
+	//msg("  " EAFORMAT " ** (%d), Sep:'%s' Member:'%s' Base:'%s' BaseLen:%d **\n", eaMember, isMember, szLastSep, *szMember, szBaseName, szLastSep ? strlen(szCurrName) - strlen(szLastSep) : 0);
 	return isMember;
 }
 
@@ -850,16 +850,16 @@ bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt, LPSTR* cmntData)
 	if (has_cmt(flags))
 	{
 		strcpy_s(cmnt, MAXSTR - 1, get_any_indented_cmt(entry));
-		//msg("  "EAFORMAT" ** Comment '%s' **\n", entry, cmnt);
+		//msg("  " EAFORMAT " ** Comment '%s' **\n", entry, cmnt);
 		if (cmntData && strstr(cmnt, " (#Func ") == cmnt)
 		{
-			//msg("  "EAFORMAT" ** Default comment '%s' **\n", entry, cmnt);
+			//msg("  " EAFORMAT " ** Default comment '%s' **\n", entry, cmnt);
 			*cmntData = strchr(cmnt, ')') + 2;
 			return true;
 		}
 	}
 	//else
-	//	msg("  "EAFORMAT" ** No comment **\n", entry);
+	//	msg("  " EAFORMAT " ** No comment **\n", entry);
 	return false;
 }
 
@@ -872,7 +872,7 @@ bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt)
 	{
 		LPCSTR sz = NULL;
 		strcpy_s(cmnt, MAXSTR - 1, get_any_indented_cmt(entry));
-		//msg("  "EAFORMAT" ** Comment '%s' **\n", entry, cmnt);
+		//msg("  " EAFORMAT " ** Comment '%s' **\n", entry, cmnt);
 		if (strstr(cmnt, " (#Func ") == cmnt)
 		{
 			sz = strstr(cmnt, "::Func");
@@ -902,12 +902,12 @@ bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt)
 					}
 				}
 			}
-			//msg("  "EAFORMAT" ** Default comment '%s' [%s] **\n", entry, cmnt, sz);
+			//msg("  " EAFORMAT " ** Default comment '%s' [%s] **\n", entry, cmnt, sz);
 			return isDefault;
 		}
 	}
 	//else
-	//	msg("  "EAFORMAT" ** No comment **\n", entry);
+	//	msg("  " EAFORMAT " ** No comment **\n", entry);
 	return false;
 }
 
@@ -922,7 +922,7 @@ bool vftable::extractNames(ea_t sub, ea_t entry, UINT iIndex, LPSTR currentName,
 		qstring cn = get_true_name(sub);
 		if (cn.c_str())
 			strncpy(currentName, cn.c_str(), (MAXSTR - 1));
-		//msg("  "EAFORMAT" ** Processing %s at %08X **\n", sub, currentName, entry);
+		//msg("  " EAFORMAT " ** Processing %s at %08X **\n", sub, currentName, entry);
 		isMember = IsMember(entry, sub, iIndex, currentName, baseName, memberName);
 		if (hasDefaultComment(entry, cmnt, &cmntData))
 			if (!isMember)
@@ -930,7 +930,7 @@ bool vftable::extractNames(ea_t sub, ea_t entry, UINT iIndex, LPSTR currentName,
 	}
 	else
 		hasDefaultComment(entry, cmnt, &cmntData);
-	//msg("  "EAFORMAT" ** Extracted names: current:'%s' base:'%s' member:'%s' comment:'%s' **\n", sub, currentName, baseName, *memberName, cmnt);
+	//msg("  " EAFORMAT " ** Extracted names: current:'%s' base:'%s' member:'%s' comment:'%s' **\n", sub, currentName, baseName, *memberName, cmnt);
 	return isMember;
 }
 
@@ -941,7 +941,7 @@ int vftable::tryKnownMember(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR prefixN
 	char szClassName[MAXSTR] = "";
 	if (strlen(prefixName) > (MAXSTR - 2))
 	{
-		msgR("  "EAFORMAT" ** Class Name too long!\n", vft);
+		msgR("  " EAFORMAT " ** Class Name too long!\n", vft);
 		return iType;
 	}
 	strcpy_s(szClassName, MAXSTR - 1, prefixName);
@@ -978,7 +978,7 @@ void vftable::processMembers(LPCTSTR lpszName, ea_t eaStart, ea_t* eaEnd, LPCTST
 	UINT iIndex = 0;
 	UINT iCount = (*eaEnd - eaStart) / sizeof(ea_t);
 
-	//msg(" "EAFORMAT" to "EAFORMAT" as '%s' (%s) for %d from "EAFORMAT" : %d\n", eaStart, *eaEnd, lpszName, prefixName, iCount, parentvft, parentCount);
+	//msg(" " EAFORMAT " to " EAFORMAT " as '%s' (%s) for %d from " EAFORMAT " : %d\n", eaStart, *eaEnd, lpszName, prefixName, iCount, parentvft, parentCount);
 
 	while (eaAddress < *eaEnd)
 	{
@@ -988,7 +988,7 @@ void vftable::processMembers(LPCTSTR lpszName, ea_t eaStart, ea_t* eaEnd, LPCTST
 			// Missing/bad code?
 			if(!get_func(eaMember))
 			{
-				//msg(" "EAFORMAT" ** No member function here! Start:"EAFORMAT" End:"EAFORMAT" as '%s' %d of %d Parent: ["EAFORMAT" : %d] **\n", eaMember, eaStart, *eaEnd, lpszName, iIndex, iCount, parentvft, parentCount);
+				//msg(" " EAFORMAT " ** No member function here! Start:" EAFORMAT " End:" EAFORMAT " as '%s' %d of %d Parent: [" EAFORMAT " : %d] **\n", eaMember, eaStart, *eaEnd, lpszName, iIndex, iCount, parentvft, parentCount);
 				if (BADADDR == eaShorterEnd)
 					eaShorterEnd = eaAddress;
 				//fixFunction(eaMember);
@@ -1000,13 +1000,13 @@ void vftable::processMembers(LPCTSTR lpszName, ea_t eaStart, ea_t* eaEnd, LPCTST
 			}
 		}
 		else
-			msg(" "EAFORMAT" ** Failed to read member pointer! **\n", eaAddress);
+			msg(" " EAFORMAT " ** Failed to read member pointer! **\n", eaAddress);
 
 		eaAddress += sizeof(ea_t);
 	};
 	if (BADADDR != eaShorterEnd) {
 		*eaEnd = eaShorterEnd;
-		//msg(" "EAFORMAT" ** Shortened! **\n", eaShorterEnd);
+		//msg(" " EAFORMAT " ** Shortened! **\n", eaShorterEnd);
 	}
 }
 
@@ -1016,7 +1016,7 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 	bool found = false;
 	char szTemp[MAXSTR] = "";
 	strcpy_s(name, MAXSTR - 1, "");
-	//msg("  "EAFORMAT" GetMemberName:'%s' "EAFORMAT"\n", eaMember, name, eaAddress);
+	//msg("  " EAFORMAT " GetMemberName:'%s' " EAFORMAT "\n", eaMember, name, eaAddress);
 	if (getVerify_t(eaAddress, eaMember))
 	{
 		// Missing/bad code?
@@ -1024,7 +1024,7 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 			fixFunction(eaMember);
 		if (!get_func(eaMember))
 		{
-			msg(" "EAFORMAT" ** No member function here! **\n", eaMember);
+			msg(" " EAFORMAT " ** No member function here! **\n", eaMember);
 			eaMember = BADADDR;
 			return eaMember;
 		}
@@ -1033,7 +1033,7 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 		BYTE Byte = get_byte(eaMember);
 		if ((Byte == 0xE9) || (Byte == 0xEB))
 		{
-			//msg(" !"EAFORMAT" GetMemberName:'%s' "EAFORMAT"\n", eaMember, name, eaAddress);
+			//msg(" !" EAFORMAT " GetMemberName:'%s' " EAFORMAT "\n", eaMember, name, eaAddress);
 			eaAddress = eaMember;
 		}
 		flags_t flags = getFlags(eaAddress);
@@ -1045,7 +1045,7 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 				char * szResult = strchr(szTemp, ')') + 2;
 				strcpy_s(name, MAXSTR - 1, szResult);
 				found = true;
-				//msg(" *"EAFORMAT" GetMemberName:'%s' "EAFORMAT" %d\n", eaMember, name, eaAddress, flags);
+				//msg(" *" EAFORMAT " GetMemberName:'%s' " EAFORMAT " %d\n", eaMember, name, eaAddress, flags);
 			}
 		}
 		if (!found)
@@ -1058,10 +1058,10 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 	}
 	else
 	{
-		msg(" "EAFORMAT" ** Failed to read member pointer! **\n", eaAddress);
+		msg(" " EAFORMAT " ** Failed to read member pointer! **\n", eaAddress);
 		eaMember = BADADDR;
 	}
-	//msg(" ="EAFORMAT" GetMemberName:'%s' "EAFORMAT"\n", eaMember, name, eaAddress);
+	//msg(" =" EAFORMAT " GetMemberName:'%s' " EAFORMAT "\n", eaMember, name, eaAddress);
 	return eaMember;
 }
 

@@ -10,6 +10,9 @@ class MainDialog : public QDialog, public Ui::Dialog
     Q_OBJECT
 public:
     MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone);
+	MainDialog() {}
+	MainDialog(MainDialog &&) {}
+	MainDialog(const MainDialog&) = default;
 };
 
 // Do main dialog, return TRUE if canceled

@@ -123,7 +123,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <AdditionalIncludeDirectories>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);$(IDADIR)\idasdk\include;$(IDAUIDIR);$(QTDIR)\include;$(QTDIR)\include\QtCore;$(QTDIR)\include\QtWidgets;$(IDAUIDIR)\IDA_WaitEx;$(IDAUIDIR)\IDA_OggPlayer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_NO_DEBUG;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_NO_DEBUG;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -188,7 +188,7 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <AdditionalIncludeDirectories>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);$(IDADIR)\idasdk\include;$(IDAUIDIR);$(QTDIR)\include;$(IDAUIDIR)\IDA_WaitEx;$(IDAUIDIR)\IDA_OggPlayer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>__EA64__;WIN32;NDEBUG;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_NO_DEBUG;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__EA64__;WIN32;NDEBUG;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_NO_DEBUG;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -252,7 +252,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);$(IDADIR)\idasdk\include;$(IDAUIDIR);$(QTDIR)\include;$(IDAUIDIR)\IDA_WaitEx;$(IDAUIDIR)\IDA_OggPlayer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEVMODE;_DEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEVMODE;_DEBUG;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -306,7 +306,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.;.\GeneratedFiles;.\GeneratedFiles\$(ConfigurationName);$(IDADIR)\idasdk\include;$(IDAUIDIR);$(QTDIR)\include;$(IDAUIDIR)\IDA_WaitEx;$(IDAUIDIR)\IDA_OggPlayer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEVMODE;__EA64__;_DEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEVMODE;__EA64__;_DEBUG;WIN32;_WINDOWS;_USRDLL;__NT__;__IDP__;__VC__;NO_OBSOLETE_FUNCS;QT_DLL;QT_GUI_LIB;QT_CORE_LIB;QT_NAMESPACE=QT;_CRT_SECURE_NO_WARNINGS;_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -621,16 +621,16 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug64|Win32'">Moc%27ing MainDialog.h...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug64|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -D_DEVMODE -D_DEBUG -DWIN32 -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug64|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -D_DEVMODE -D__EA64__ -D_DEBUG -DWIN32 -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer" "-fstdafx.h" "-f../../MainDialog.h"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -D_DEVMODE -D_DEBUG -D_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS -DWIN32 -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug64|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -D_DEVMODE -D__EA64__ -D_DEBUG -DWIN32 -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release64|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Moc%27ing MainDialog.h...</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release64|Win32'">Moc%27ing MainDialog.h...</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release64|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_NO_DEBUG -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release64|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -D__EA64__ -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_NO_DEBUG -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_NO_DEBUG -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtWidgets" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release64|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -D__EA64__ -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -D__NT__ -D__IDP__ -D__VC__ -DNO_OBSOLETE_FUNCS -DQT_NO_DEBUG -DQT_DLL -DQT_GUI_LIB -DQT_CORE_LIB -DQT_NAMESPACE=QT -D_CRT_SECURE_NO_WARNINGS -D_SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS -D_VC80_UPGRADE=0x0600 -D_WINDLL  "-I." "-I.\GeneratedFiles" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(IDADIR)\idasdk\include" "-I$(IDAUIDIR)\." "-I$(QTDIR)\include" "-I$(IDAUIDIR)\IDA_WaitEx" "-I$(IDAUIDIR)\IDA_OggPlayer"</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
