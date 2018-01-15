@@ -275,7 +275,7 @@ void guessMember(ea_t eaMember)
 				guessed = true;
 			}
 			else
-				msg(" " EAFORMAT " ** not guessed ** \n", eaMember);
+				msg("\t\t%35s\t " EAFORMAT " ** not guessed ** \n", "", eaMember);
 		else
 		{
 			typeMember(eaMember, tif, true);
@@ -381,6 +381,7 @@ vftable::EntryInfo::EntryInfo(UINT iIndex, ea_t eaVft, ea_t eaParentVft, LPCSTR 
 
 void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate)
 {
+	ea_t oldMember = member;
 	qstring defaultComment = "";
 	MakeDefaultComment(defaultComment);
 	qstring tClassName = szClassName;
@@ -426,11 +427,17 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 	qstring newComment = getNonDefaultComment(entryFlags, entry, defaultComment.c_str());
 	if (newComment.length())
 		currComment = newComment;
-	else if (BADADDR != member)
+	else if (newMember)
 	{
-		newComment = getNonDefaultComment(memberFlags, member, defaultComment.c_str());
+		newComment = getNonDefaultComment(memberFlags, newMember, defaultComment.c_str());
 		if (newComment.length())
 			currComment = newComment;
+		else if (BADADDR != member)
+		{
+			newComment = getNonDefaultComment(memberFlags, member, defaultComment.c_str());
+			if (newComment.length())
+				currComment = newComment;
+		}
 	}
 
 	if (!IsIdentical())
@@ -622,13 +629,14 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 			if (0 == newComment.length())
 				set_cmt(member, comment.c_str(), false);
 		}
-		else
-			isDefault = false;
 	}
 
 	newComment = getNonDefaultComment(entryFlags, entry, defaultComment.c_str());
 	if (0 == newComment.length())
 		set_cmt(entry, comment.c_str(), false);
+	isDefault = memberName == defaultName;
+	isIdentical = isInherited && (member == oldMember);
+	MakeFullName(fullName);
 };
 
 bool vftable::IsClass(LPCSTR szClassName, LPSTR szCurrName, bool translate)

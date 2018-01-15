@@ -66,7 +66,7 @@ BOOL optionProcessStatic     = TRUE;
 BOOL optionOverwriteComments = FALSE;
 BOOL optionAudioOnDone       = TRUE;
 BOOL optionDumpIdentical     = FALSE;
-UINT optionIterLevels		 = 25;
+UINT optionIterLevels		 = 10;
 
 // List box defs
 static const char LBTITLE[] = {"[Class Informer]"};
@@ -1571,13 +1571,13 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
 	TIMESTAMP startTime = getTimeStamp();
 	#endif
 
-    char name[64];
+	char name[64];
     if (get_true_segm_name(seg, name, SIZESTR(name)) <= 0)
         strcpy(name, "???");
     msgR(" N: \"%s\", A: " EAFORMAT "-" EAFORMAT ", S: %s. Pass 1\n", name, seg->startEA, seg->endEA, byteSizeString(seg->size()));
 
 	RTTI::maxClassNameLength = 0;
-    UINT found = 0;
+	UINT found = 0;
     if (seg->size() >= sizeof(ea_t))
     {
         ea_t startEA = ((seg->startEA + sizeof(ea_t)) & ~((ea_t)(sizeof(ea_t) - 1)));
@@ -1641,15 +1641,15 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
 		}
 	}
 
-    if (found)
-    {
-        char numBuffer[32];
-        msgR("     Total VFT: %s	Longuest name: %d\n", prettyNumberString(found, numBuffer), RTTI::maxClassNameLength);
+	if (found)
+	{
+		char numBuffer[32];
+		msgR("     Total VFT: %s	Longuest name: %d\n", prettyNumberString(found, numBuffer), RTTI::maxClassNameLength);
 	}
 	#ifdef _DEVMODE
 	msgR("VFT scan time: %.3f\n", (getTimeStamp() - startTime));
 	#endif
-    return(FALSE);
+	return(FALSE);
 }
 
 LPCSTR Database = database_idb;
@@ -1706,6 +1706,7 @@ bool OpenFiles(void)
 	fileList.push_back(FileInfo("classInformer.inc"));
 	fileList.push_back(FileInfo("classInformer.txt"));
 	fileList.push_back(FileInfo("classRTTI.inl"));
+	fileList.push_back(FileInfo("classInformer.idc"));
 
 	strcpy_s(DatabaseName, strrchr(Database, '\\'));
 	LPSTR e = strrchr(DatabaseName, '.');
@@ -1747,6 +1748,7 @@ bool OpenFiles(void)
 #define fClassInc		fileList[6].m_file
 #define fClassIncTemp	fileList[7].m_file
 #define fClassRTTIinl	fileList[8].m_file
+#define fClassIdc		fileList[9].m_file
 
 bool lookupVftInClassList(LPCSTR demangledColName, ea_t* parentvft, UINT* parentCount, UINT* parentIndex) {
 	for (UINT i = 0; i < RTTI::classList.size(); i++) {
@@ -1778,82 +1780,82 @@ static BOOL findVftables()
 	try
 #endif
 	{
-        #ifdef _DEVMODE
-        TIMESTAMP startTime = getTimeStamp();
-        #endif
+#ifdef _DEVMODE
+		TIMESTAMP startTime = getTimeStamp();
+#endif
 
-        // COLs in a hash map for speed, plus match counts
-        eaRefMap colMap;
-        for (eaList::const_iterator it = colList.begin(), end = colList.end(); it != end; ++it)
-            colMap[*it] = 0;
+		// COLs in a hash map for speed, plus match counts
+		eaRefMap colMap;
+		for (eaList::const_iterator it = colList.begin(), end = colList.end(); it != end; ++it)
+			colMap[*it] = 0;
 
-        // Usually in ".rdata", try first.
-        stdext::hash_set<segment_t *> segSet;
-        if (segment_t *seg = get_segm_by_name(".rdata"))
-        {
-            segSet.insert(seg);
-            if (scanSeg4Vftables(seg, colMap))
-                return(TRUE);
-        }
+		// Usually in ".rdata", try first.
+		stdext::hash_set<segment_t *> segSet;
+		if (segment_t *seg = get_segm_by_name(".rdata"))
+		{
+			segSet.insert(seg);
+			if (scanSeg4Vftables(seg, colMap))
+				return(TRUE);
+		}
 
-        // And ones named ".data"
-        int segCount = get_segm_qty();
-        //if (colList.empty())
-        {
-            for (int i = 0; i < segCount; i++)
-            {
-                if (segment_t *seg = getnseg(i))
-                {
-                    if (seg->type == SEG_DATA)
-                    {
-                        if (segSet.find(seg) == segSet.end())
-                        {
-                            char name[8];
-                            if (get_true_segm_name(seg, name, SIZESTR(name)) == SIZESTR(".data"))
-                            {
-                                if (strcmp(name, ".data") == 0)
-                                {
-                                    segSet.insert(seg);
-                                    if (scanSeg4Vftables(seg, colMap))
-                                        return(TRUE);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+		// And ones named ".data"
+		int segCount = get_segm_qty();
+		//if (colList.empty())
+		{
+			for (int i = 0; i < segCount; i++)
+			{
+				if (segment_t *seg = getnseg(i))
+				{
+					if (seg->type == SEG_DATA)
+					{
+						if (segSet.find(seg) == segSet.end())
+						{
+							char name[8];
+							if (get_true_segm_name(seg, name, SIZESTR(name)) == SIZESTR(".data"))
+							{
+								if (strcmp(name, ".data") == 0)
+								{
+									segSet.insert(seg);
+									if (scanSeg4Vftables(seg, colMap))
+										return(TRUE);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 
-        // If still none found, try any remaining data type segments
-        if (colList.empty())
-        {
-            for (int i = 0; i < segCount; i++)
-            {
-                if (segment_t *seg = getnseg(i))
-                {
-                    if (seg->type == SEG_DATA)
-                    {
-                        if (segSet.find(seg) == segSet.end())
-                        {
-                            segSet.insert(seg);
-                            if (scanSeg4Vftables(seg, colMap))
-                                return(TRUE);
-                        }
-                    }
-                }
-            }
-        }
+		// If still none found, try any remaining data type segments
+		if (colList.empty())
+		{
+			for (int i = 0; i < segCount; i++)
+			{
+				if (segment_t *seg = getnseg(i))
+				{
+					if (seg->type == SEG_DATA)
+					{
+						if (segSet.find(seg) == segSet.end())
+						{
+							segSet.insert(seg);
+							if (scanSeg4Vftables(seg, colMap))
+								return(TRUE);
+						}
+					}
+				}
+			}
+		}
 
-        // Rebuild 'colList' with any that were not located
-        if (!colList.empty())
-        {
-            colList.clear();
-            for (eaRefMap::const_iterator it = colMap.begin(), end = colMap.end(); it != end; ++it)
-            {
-                if (it->second == 0)
-                    colList.push_front(it->first);
-            }
-        }
+		// Rebuild 'colList' with any that were not located
+		if (!colList.empty())
+		{
+			colList.clear();
+			for (eaRefMap::const_iterator it = colMap.begin(), end = colMap.end(); it != end; ++it)
+			{
+				if (it->second == 0)
+					colList.push_front(it->first);
+			}
+		}
 
 		for (UINT i = 0; i < RTTI::classList.size(); i++)
 			RTTI::classList[i].m_done = false;
@@ -1895,14 +1897,14 @@ static BOOL findVftables()
 				//msgR("***** Done %s\n", ci->m_cTypeName);
 			}
 		}
-        #ifdef _DEVMODE
-        msgR("vftable scan time: %.3f\n", (getTimeStamp() - startTime));
-        #endif
-    }
+		#ifdef _DEVMODE
+		msgR("vftable scan time: %.3f\n", (getTimeStamp() - startTime));
+		#endif
+	}
 #ifndef __DEBUG
 	CATCHTRUE()
 #endif
-    return(FALSE);
+	return(FALSE);
 }
 
 #ifndef __EA64__
@@ -2379,6 +2381,7 @@ void dumpClassMembers(FILE* f, RTTI::classInfo aCI, vftable::VFMemberList aML, b
 }
 
 char THEprefix[MAXSTR] = "";
+static char lastError[MAXSTR] = "";
 
 bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFromName, FILE* f)
 {
@@ -2398,8 +2401,8 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 					RTTI::ReplaceForCTypeName(funcToName, fN.c_str());
 			}
 			UINT callIndex = 0;
-			::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s` " EAFORMAT " at level %d for index %d", THEprefix, funcToName, funcTo->startEA, level, index);
-			qfprintf(f, "%s\n", szClassExport);
+			::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s " EAFORMAT " at level %d for index %d", THEprefix, funcToName, funcTo->startEA, level, index);
+			//qfprintf(f, "%s\n", szClassExport);
 			for (bool ok = xb.first_to(funcTo->startEA, XREF_ALL); ok; ok = xb.next_to())
 			{
 				callIndex++;
@@ -2419,16 +2422,19 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 							RTTI::ReplaceForCTypeName(funcName, fN.c_str());
 						else
 							strcpy_s(funcName, "NONAME__");
-						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s` " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
+						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
 							THEprefix, funcToName, funcTo->startEA, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
-						qfprintf(f, "%s\n", szClassExport);
+						//qfprintf(f, "%s\n", szClassExport);
 						//msgR("%s\n", szClassExport);
 						char newFuncName[MAXSTR] = "";
 						::qsnprintf(funcFromName, MAXSTR - 1, "%s%s_from%0.4d", strstr(funcName, "__ICI__") ? "" : "__ICI__", funcName, index);
 						::qsnprintf(newFuncName, MAXSTR - 1, "//\t\t%srenamed to '%s'", THEprefix, funcFromName);
-						qfprintf(f, "%s\n", newFuncName);
-						set_name(funcTo->startEA, funcFromName);
-						break;	// We use the first name we can find
+						//qfprintf(f, "%s\n", newFuncName);
+						if (!(0 == stricmp(lastError, funcFromName)))
+							if (!set_name(funcTo->startEA, funcFromName))
+								strcpy_s(lastError, funcFromName);
+							else
+								break;	// We use the first name we can find
 					}
 				};
 			}
@@ -2507,11 +2513,14 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 							strlen(funcFromName) ? funcFromName : "NONAME__", callIndex);
 						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " Func:" EAFORMAT " '%s' changed to '%s'",
 							THEprefix, funcFromName, eaCurr, xb.to, funcTo ? funcTo->startEA : BADADDR, funcName, funcToName);
-						qfprintf(f, "%s\n", szClassExport);
+						//qfprintf(f, "%s\n", szClassExport);
 						//msgR("%s\n", szClassExport);
 						//qfprintf(f, "%s\n", newFuncName);
-						set_name(funcTo->startEA, funcToName);
-						found++;
+						if (!(0==stricmp(lastError, funcToName)))
+							if(!set_name(funcTo->startEA, funcToName))
+								strcpy_s(lastError, funcToName);
+							else
+								found++;
 						funcToFlags = getFlags(funcTo->startEA);
 						if (has_name(funcToFlags) && !has_dummy_name(funcToFlags))
 								if (!LookupFuncFromName(funcTo, callIndex, ++level, funcName, f))
@@ -2580,7 +2589,7 @@ static BOOL dumpVftables()
 						if (get_long_name(&fN, funcFrom->startEA))
 							strncpy(funcName, fN.c_str(), (MAXSTR - 1));
 					}
-					::qsnprintf(szClassExport, MAXSTR - 1, "//\txref to %s::`vftable` " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
+					::qsnprintf(szClassExport, MAXSTR - 1, "//\txref to %s::'vftable' " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
 						aCI.m_className, aCI.m_vft, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
 					qfprintf(fClassInc, "%s\n", szClassExport);
 					//msgR("%s\n", szClassExport);
@@ -2746,6 +2755,88 @@ static BOOL dumpVftables()
 
 		//return false;
 
+		// Create IDC begining:
+		qfprintf(fClassIdc, "#include <idc.idc>\n");
+		qfprintf(fClassIdc, "\n");
+		qfprintf(fClassIdc, "		extern pointerSize;\n");
+		qfprintf(fClassIdc, "\n");
+		qfprintf(fClassIdc, "		static GetRef(ea)\n");
+		qfprintf(fClassIdc, "		{\n");
+		qfprintf(fClassIdc, "			auto xea;\n");
+		qfprintf(fClassIdc, "			if (pointerSize == 4)\n");
+		qfprintf(fClassIdc, "				xea = Dword(ea);\n");
+		qfprintf(fClassIdc, "			else\n");
+		qfprintf(fClassIdc, "				xea = Qword(ea);\n");
+		qfprintf(fClassIdc, "			return xea;\n");
+		qfprintf(fClassIdc, "		}\n");
+		qfprintf(fClassIdc, "\n");
+		qfprintf(fClassIdc, "		static getRelJmpTarget(eaAddress)\n");
+		qfprintf(fClassIdc, "		{\n");
+		qfprintf(fClassIdc, "			auto bt = Byte(eaAddress);\n");
+		qfprintf(fClassIdc, "			if (bt == 0xEB)\n");
+		qfprintf(fClassIdc, "			{\n");
+		qfprintf(fClassIdc, "				bt = Byte(eaAddress + 1);\n");
+		qfprintf(fClassIdc, "				if (bt & 0x80)\n");
+		qfprintf(fClassIdc, "					return (eaAddress + 2 - ((~bt & 0xFF) + 1));\n");
+		qfprintf(fClassIdc, "				else\n");
+		qfprintf(fClassIdc, "					return (eaAddress + 2 + bt);\n");
+		qfprintf(fClassIdc, "			}\n");
+		qfprintf(fClassIdc, "			else\n");
+		qfprintf(fClassIdc, "				if (bt == 0xE9)\n");
+		qfprintf(fClassIdc, "				{\n");
+		qfprintf(fClassIdc, "					auto dw = Dword(eaAddress + 1);\n");
+		qfprintf(fClassIdc, "					if (dw & 0x80000000)\n");
+		qfprintf(fClassIdc, "						return (eaAddress + 5 - (~dw + 1));\n");
+		qfprintf(fClassIdc, "					else\n");
+		qfprintf(fClassIdc, "						return (eaAddress + 5 + dw);\n");
+		qfprintf(fClassIdc, "				}\n");
+		qfprintf(fClassIdc, "				else\n");
+		qfprintf(fClassIdc, "					return(BADADDR);\n");
+		qfprintf(fClassIdc, "		}\n");
+		qfprintf(fClassIdc, "\n");
+		qfprintf(fClassIdc, "		static DoFunc(ea, funcName, funcComment)\n");
+		qfprintf(fClassIdc, "		{\n");
+		qfprintf(fClassIdc, "			auto xea = GetRef(ea);\n");
+		qfprintf(fClassIdc, "			auto jea = getRelJmpTarget(xea);\n");
+		qfprintf(fClassIdc, "			if (jea == BADADDR)\n");
+		qfprintf(fClassIdc, "			{\n");
+		qfprintf(fClassIdc, "				if (funcComment != \"\")\n");
+		qfprintf(fClassIdc, "				{\n");
+		qfprintf(fClassIdc, "					MakeComm(ea, funcComment);\n");
+		qfprintf(fClassIdc, "					if (funcName != \"\")\n");
+		qfprintf(fClassIdc, "						MakeComm(xea, funcComment);\n");
+		qfprintf(fClassIdc, "				}\n");
+		qfprintf(fClassIdc, "				if (funcName != \"\")\n");
+		qfprintf(fClassIdc, "					MakeNameEx(xea, funcName, SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
+		qfprintf(fClassIdc, "			}\n");
+		qfprintf(fClassIdc, "			else\n");
+		qfprintf(fClassIdc, "			{\n");
+		qfprintf(fClassIdc, "				if (funcComment != \"\")\n");
+		qfprintf(fClassIdc, "				{\n");
+		qfprintf(fClassIdc, "					MakeComm(ea, funcComment);\n");
+		qfprintf(fClassIdc, "					if (funcName != \"\")\n");
+		qfprintf(fClassIdc, "					{\n");
+		qfprintf(fClassIdc, "						MakeComm(xea, funcComment);\n");
+		qfprintf(fClassIdc, "						MakeComm(jea, funcComment);\n");
+		qfprintf(fClassIdc, "					}\n");
+		qfprintf(fClassIdc, "				}\n");
+		qfprintf(fClassIdc, "				if (funcName != \"\")\n");
+		qfprintf(fClassIdc, "				{\n");
+		qfprintf(fClassIdc, "					MakeNameEx(xea, \"\", SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
+		qfprintf(fClassIdc, "					MakeNameEx(jea, funcName, SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
+		qfprintf(fClassIdc, "				}\n");
+		qfprintf(fClassIdc, "			}\n");
+		qfprintf(fClassIdc, "			ea = ea + pointerSize;\n");
+		qfprintf(fClassIdc, "			return ea;\n");
+		qfprintf(fClassIdc, "		}\n");
+		qfprintf(fClassIdc, "\n");
+		qfprintf(fClassIdc, "		static main(void)\n");
+		qfprintf(fClassIdc, "		{\n");
+		qfprintf(fClassIdc, "			pointerSize = sizeof(\"void *\");\n");
+		qfprintf(fClassIdc, "			auto ea;\n");
+		qfprintf(fClassIdc, "			auto vtblName;\n");
+		qfprintf(fClassIdc, "\n");
+
 		for (UINT i = 0; i < cpks; i++)
 		{
 			if (0 == i % 100)
@@ -2887,39 +2978,47 @@ static BOOL dumpVftables()
 				qfprintf(fClassIncHpp, "%s\n", "{");
 				dumpClassMembers(fClassIncHpp, aCI, aML, false, true);
 				qfprintf(fClassIncHpp, "};\t//\t%04X\n\n", aCI.m_size);
+
+				UINT nameCount = 0;
+				for (UINT j = 0; j < aML.size(); j++)
+				{
+					vftable::EntryInfo e = aML[j];
+					if (!e.isDefault && !e.isIdentical && e.isMember)
+						nameCount++;
+				}
+				if (nameCount)
+				{
+					// Start the class in IDC script
+					qfprintf(fClassIdc, "				vtblName = \"%s\"; // %s %s\n", get_true_name(aCI.m_vft).c_str(), aCI.m_colName, aCI.m_className);
+					qfprintf(fClassIdc, "				ea = LocByName(vtblName);\n");
+					qfprintf(fClassIdc, "				if (ea == BADADDR || vtblName == \"\")\n");
+					qfprintf(fClassIdc, "				{\n");
+					qfprintf(fClassIdc, "					Message(\"No label found for '%%s'\\n\", vtblName);\n");
+					qfprintf(fClassIdc, "				}\n");
+					qfprintf(fClassIdc, "				else\n");
+					qfprintf(fClassIdc, "				{\n");
+					qfprintf(fClassIdc, "					Jump(ea);\n");
+					qfprintf(fClassIdc, "					Message(\"Working on class %%s having %%d virtual members\\n\", vtblName, %d);\n", nameCount);
+
+					if (strlen(aCI.m_colName))
+						for (UINT j = 0; j < aML.size(); j++)
+						{
+							vftable::EntryInfo e = aML[j];
+							if (!e.IsDefault() && !e.IsIdentical() && e.IsMember())
+								qfprintf(fClassIdc, "					ea = DoFunc(ea, \"%s\", \"%s\");\n", e.isOutOfHierarchy ? "" : e.fullName.c_str(), e.comment.c_str());
+							else
+								qfprintf(fClassIdc, "					ea = ea + pointerSize;\n");
+						}
+					// End the class in IDC script
+					qfprintf(fClassIdc, "				}\n");
+					qfprintf(fClassIdc, "\n");
+				}
 			}
 		}
 
-		//for (UINT i = 0; i < RTTI::classPKeys.size(); i++)
-		//{
-		//	if (0 == i % 100)
-		//		msgR("\t\t%35s Class:\t% 7d of % 7d\n", "Temp Dump classes:", i + 1, RTTI::classList.size());
-
-		//	UINT index = RTTI::classPKeys[i].index;
-		//	RTTI::classInfo aCI = RTTI::classList[index];
-		//	bool isTemplate = aCI.m_templateInfo.m_template;
-		//	if (0 == strstr(aCI.m_className, "::") && !isTemplate)
-		//	{
-		//		char plainName[MAXSTR];
-		//		char szTemplate[MAXSTR] = "template<";
-		//		UINT size = aCI.m_bcdlist.size();
-		//		qfprintf(fClassIncTemp, "%sclass %s%s\n", isTemplate ? "typedef " : "",
-		//			aCI.m_className, size > 1 ? ": public" : "");
-		//		UINT parentCount = 1;
-		//		for (UINT j = 1; j < size; j++)
-		//		{
-		//			getPlainTypeName(aCI.m_bcdlist[j].m_name, plainName);
-		//			RTTI::classInfo* ci = RTTI::findClassInList(plainName);
-		//			qfprintf(fClassIncTemp, "\t%s%s\n", plainName, ci ? (j + ci->m_numBaseClasses >= size ? "" : ",") : ",");
-		//			if (ci)
-		//				j += (ci->m_numBaseClasses - 1);
-		//			parentCount++;
-		//		}
-		//		qfprintf(fClassIncTemp, "%s\n", "{");
-		//		dumpClassMembersOld(fClassIncTemp, aCI, false, true);
-		//		qfprintf(fClassIncTemp, "};\t//\t%04X\n\n", aCI.m_size);
-		//	}
-		//}
+		// Ending of IDC main func
+		qfprintf(fClassIdc, "		}\n");
+		qfprintf(fClassIdc, "\n");
 
 		// include manual definitions that cannot or should not be found in file.
 		::qsnprintf(szClassExport, (MAXSTR - 1), "#include \".%s.h\"", DatabaseName);
@@ -3052,15 +3151,15 @@ static BOOL dumpFuncs()
 			char funcFromName[MAXSTR] = "";
 			func_t* funcTo = getn_func(index);
 			if (funcTo)
-				if (LookupFuncToName(funcTo, index, 0, funcFromName, fClassIncTemp))
-					/*qfprintf(fClassIncTemp, "\n")*/;
+				/*if (*/LookupFuncToName(funcTo, index, 0, funcFromName, fClassIncTemp)/*)
+					qfprintf(fClassIncTemp, "\n")*/;
 		}
 	}
 #ifndef __DEBUG
 	CATCH()
 #endif
 
-    return(FALSE);
+	return(FALSE);
 }
 
 // ================================================================================================
@@ -3124,3 +3223,4 @@ static BOOL getRttiData()
 
     return(FALSE);
 }
+

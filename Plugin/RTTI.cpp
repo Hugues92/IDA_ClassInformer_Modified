@@ -271,6 +271,30 @@ void RTTI::addDefinitionsToIda()
     #undef ADD_MEMBER
 }
 
+void RTTI::stripAnonymousNamespace(classInfo *ci)
+{
+	if (LPCSTR sz = strstr(ci->m_cTypeName, "::"))
+	{
+		char *className;
+		sz += 2;
+		if (findClassInList(sz))
+			return;
+		// getPlainTypeName(ci.m_className, className);
+		className = ci->m_className;
+		while (className = strstr(className, "`anonymous namespace'::"))
+		{
+			className += strlen("`anonymous namespace'");
+			strcpy_s(ci->m_className, className);
+		}
+		className = ci->m_cTypeName;
+		while (className = strstr(className, "_anonymous_namespace_::"))
+		{
+			className += strlen("_anonymous_namespace_");
+			strcpy_s(ci->m_cTypeName, className);
+		}
+	}
+}
+
 static tid_t lpvftableId = 0;
 
 void RTTI::addClassDefinitionsToIda(classInfo ci, bool force)
@@ -282,18 +306,7 @@ void RTTI::addClassDefinitionsToIda(classInfo ci, bool force)
 		//msgR(" ** class name too long: (%d) %s\n", strlen(ci.m_className), ci.m_className);
 		return;	// too dangerous
 	}
-
-	//if (LPCSTR sz = strstr(ci.m_cTypeName, "::"))
-	//{
-	//	sz += 2;
-	//	if (findClassInList(sz))
-	//		return;
-	//	getPlainTypeName(ci.m_className, className);
-	//	if (className == strstr(className, "`anonymous namespace'::"))
-	//		strcpy_s(className, className + strlen("`anonymous namespace'::"));
-	//}
-	//else
-	//	strcpy_s(className, ci.m_className);
+	//stripAnonymousNamespace(&ci);
 
 	// Member type info for 32bit offset types
 	opinfo_t mtoff;
@@ -1292,8 +1305,8 @@ void RTTI::ReplaceForCTypeName(LPSTR cTypeName, LPCSTR currName)
 	QT::qsnprintf(cTypeName, MAXSTR - 2, "__ICI__TooLong%0.5d__", lastTooLong);
 	if (strlen(currName) < (MAXSTR - 25)) {
 		strcpy_s(workingName, MAXSTR - 2, currName);
-		while (LPSTR sz = strchr(workingName, '`')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, '\'')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '`')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, '<')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, '>')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, ',')) *sz = '_';
@@ -1308,9 +1321,10 @@ void RTTI::ReplaceForCTypeName(LPSTR cTypeName, LPCSTR currName)
 		while (LPSTR sz = strchr(workingName, ']')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, '~')) *sz = '_';
 		if (strlen(workingName) < (MAXSTR - 25))
+		{
 			strcpy_s(cTypeName, MAXSTR - 1, workingName);
-		else
 			lastTooLong--;
+		}
 	}
 	//msgR("  ** PrefixName:'%s' as '%s'\n", prefixName, cTypeName);
 }
@@ -1328,8 +1342,26 @@ bool RTTI::AddNonRTTIclass(LPCSTR prefixName)
 	//msg(" =" EAFORMAT " " EAFORMAT " ColName:'%s' DemangledName:'%s' PrefixName:'%s'\n", vft, col, colName, demangledColName, prefixName);
 	classInfo ci;
 	bcdList list;
-	stripClassName(prefixName, ci.m_className);
-	CalcCTypeName(ci.m_cTypeName, prefixName);
+	char tempName[MAXSTR];
+	char newName[MAXSTR];
+	if (strlen(prefixName) > MAXSTR - 25)
+	{
+		::qsnprintf(tempName, (MAXSTR - 1), "__ICI__classTooLongRenamed_%d__", lastTooLong++);
+		msgR("\t\t\tToo long: '%s'\t\t\t\treplaced by '%s'\n", prefixName, tempName);
+		strcpy_s(newName, MAXSTR, tempName);
+	}
+	else
+		strcpy_s(newName, MAXSTR, prefixName);
+	stripClassName(newName, tempName);
+	strcpy_s(ci.m_className, (MAXSTR - 1), tempName);
+	size_t i = 0;
+	while (findClassInList(ci.m_className))
+	{
+		::qsnprintf(ci.m_className, (size_t)(MAXSTR - 1), "%s_%d", tempName, i);
+		msgR("\t\t\tTrying className:'%s'\n", ci.m_className);
+		i++;
+	}
+	CalcCTypeName(ci.m_cTypeName, ci.m_className);
 	strcpy_s(ci.m_colName, "");
 	strcpy_s(ci.m_templateInfo.m_templatename, "");
 	ci.m_bcdlist = list;
@@ -1372,7 +1404,7 @@ bool RTTI::AddNonRTTIclass(LPCSTR prefixName)
 			}
 			else
 			{
-				msg("  ** This class already exists! '%s' [as '%s']\n", aPK.pk, i->pk);
+				msg("  ** This class %d already exists! '%s' at index %d. [as '%s' or '%s'] 1\n", aPK.index, aPK.pk, i->index, ci.m_className, ci.m_cTypeName);
 				refreshUI();
 				return false;
 			}
@@ -1393,10 +1425,12 @@ bool RTTI::AddNonRTTIclass(LPCSTR prefixName)
 		{
 			found = true;
 			if (0 != s)
+			{
 				classInherit.insert(i, cii);
+			}
 			else
 			{
-				msg("  ** This class already exists! '%s'\n", ci.m_className);
+				msg("  ** This class %d already exists! '%s' at index %d. 2\n", cii.index, ci.m_className, i->index);
 				refreshUI();
 				return false;
 			}
@@ -1590,8 +1624,23 @@ void RTTI::processVftablePart1(ea_t vft, ea_t col)
         {
 			//msg(" =" EAFORMAT " " EAFORMAT " ColName:'%s' DemangledName:'%s' PrefixName:'%s'\n", vft, col, colName, demangledColName, prefixName);
 			classInfo ci;
-			stripClassName(prefixName, ci.m_className);
-			CalcCTypeName(ci.m_cTypeName, prefixName);
+			char tempName[MAXSTR];
+			if (strlen(prefixName) > MAXSTR - 25)
+			{
+				::qsnprintf(tempName, (MAXSTR - 1), "__ICI__classTooLongRenamed_%d__", lastTooLong++);
+				msgR("\t\t\tToo long: '%s'\t\t\t\treplaced by '%s'\n", prefixName, tempName);
+				strcpy_s(prefixName, MAXSTR, tempName);
+			}
+			stripClassName(prefixName, tempName);
+			strcpy_s(ci.m_className, (MAXSTR - 1), tempName);
+			size_t i = 0;
+			while (findClassInList(ci.m_className))
+			{
+				::qsnprintf(ci.m_className, (size_t)(MAXSTR - 1), "%s_%d", tempName, i);
+				msgR("\t\t\tTrying className:'%s' for vft:"EAFORMAT"\n", ci.m_className, vft);
+				i++;
+			}
+			CalcCTypeName(ci.m_cTypeName, ci.m_className);
 			//msg(" =" EAFORMAT " " EAFORMAT " \tclassName:'%s' cTypeName:'%s'\n", vft, col, ci.m_className.c_str(), ci.m_cTypeName);
 			strcpy_s(ci.m_colName, colName);
 			strcpy_s(ci.m_templateInfo.m_templatename, "");
@@ -1610,6 +1659,7 @@ void RTTI::processVftablePart1(ea_t vft, ea_t col)
 			{
 				decodeTemplate(&(ci.m_templateInfo), ci.m_className);
 			}
+			//stripAnonymousNamespace(&ci);
 
 			int s = classList.size();
 			classList.resize(s + 1);
@@ -1634,7 +1684,7 @@ void RTTI::processVftablePart1(ea_t vft, ea_t col)
 					}
 					else
 					{
-						msg("  ** This class already exists! '%s' [as '%s']\n", aPK.pk, i->pk);
+						msg("  ** This class %d already exists! '%s' at index %d. [as '%s' or '%s'] 3\n", aPK.index, aPK.pk, i->index, ci.m_className, ci.m_cTypeName);
 						refreshUI();
 					}
 					break;
@@ -1661,7 +1711,7 @@ void RTTI::processVftablePart1(ea_t vft, ea_t col)
 					}
 					else
 					{
-						//msg("  ** This class already exists! '%s'\n", ci.m_className);
+						// msg("  ** This class %d already exists! '%s' at index %d. 4\n", cii.index, ci.m_className, i->index);
 						refreshUI();
 					}
 					break;
@@ -1725,7 +1775,7 @@ RTTI::classInfo* RTTI::findColInList(ea_t col)
 LPSTR RTTI::ClassListPK(LPSTR pk, RTTI::classInfo ci)
 {
 	if (pk)
-		_snprintf(pk, MAXSTR - 1, "%01d%06d%s", !ci.m_templateInfo.m_template, ci.m_numBaseClasses, ci.m_className);
+		_snprintf(pk, MAXSTR - 1, "%01d%06d%s", ci.m_templateInfo.m_template ? 0 : 1, ci.m_numBaseClasses, ci.m_className);
 	return pk;
 }
 
@@ -2194,6 +2244,7 @@ void RTTI::processVftablePart2(ea_t vft, ea_t col)
 				int c = h2ti(idati, NULL, cLine);
 			}
 			addClassDefinitionsToIda(*ci);
+
 			/*
 			found = get_named_type(idati, ci->m_classname, ntf_flags, &ptr);
 			if (!found)

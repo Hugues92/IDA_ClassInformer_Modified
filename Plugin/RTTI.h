@@ -119,6 +119,9 @@ namespace RTTI
     const WORD IS_TOP_LEVEL = 0x8000;
 
     void freeWorkingData();
+
+	struct classInfo;
+	void stripAnonymousNamespace(classInfo *ci);
 	void addDefinitionsToIda();
     void processVftablePart1(ea_t eaTable, ea_t col);
 	void processVftablePart2(ea_t eaTable, ea_t col);
