@@ -29,6 +29,8 @@ public:
     QCheckBox *checkBox2;
     QCheckBox *checkBox3;
     QCheckBox *checkBox4;
+    QCheckBox *checkBox5;
+    QCheckBox *checkBox6;
     QLabel *linkLabel;
     QLabel *image;
     QLabel *versionLabel;
@@ -88,9 +90,23 @@ public:
 #ifndef QT_NO_TOOLTIP
         checkBox4->setToolTip(QStringLiteral(""));
 #endif // QT_NO_TOOLTIP
+        checkBox5 = new QCheckBox(Dialog);
+        checkBox5->setObjectName(QStringLiteral("checkBox5"));
+        checkBox5->setGeometry(QRect(15, 215, 151, 17));
+        checkBox5->setFont(font);
+#ifndef QT_NO_TOOLTIP
+        checkBox5->setToolTip(QStringLiteral(""));
+#endif // QT_NO_TOOLTIP
+        checkBox6 = new QCheckBox(Dialog);
+        checkBox6->setObjectName(QStringLiteral("checkBox6"));
+        checkBox6->setGeometry(QRect(15, 245, 151, 17));
+        checkBox6->setFont(font);
+#ifndef QT_NO_TOOLTIP
+        checkBox6->setToolTip(QStringLiteral(""));
+#endif // QT_NO_TOOLTIP
         linkLabel = new QLabel(Dialog);
         linkLabel->setObjectName(QStringLiteral("linkLabel"));
-        linkLabel->setGeometry(QRect(15, 220, 136, 16));
+        linkLabel->setGeometry(QRect(15, 280, 136, 16));
         linkLabel->setFont(font);
         linkLabel->setFrameShadow(QFrame::Sunken);
         linkLabel->setTextFormat(Qt::AutoText);
@@ -130,6 +146,8 @@ public:
         checkBox2->setText(QApplication::translate("Dialog", "Process static initializers && terminators", 0));
         checkBox3->setText(QApplication::translate("Dialog", "Overwrite anterior comments", 0));
         checkBox4->setText(QApplication::translate("Dialog", "Audio on completion", 0));
+        checkBox5->setText(QApplication::translate("Dialog", "Clean", 0));
+        checkBox6->setText(QApplication::translate("Dialog", "Full Clear", 0));
         linkLabel->setText(QApplication::translate("Dialog", "<a href=\"http://www.macromonkey.com/bb/index.php/topic,13.0.html\" style=\"color:#AA00FF;\">Class Informer Fourm</a>", 0));
         image->setText(QString());
         versionLabel->setText(QApplication::translate("Dialog", "Version: 2.0\n"

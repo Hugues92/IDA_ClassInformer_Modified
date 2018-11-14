@@ -67,6 +67,8 @@ BOOL optionOverwriteComments = FALSE;
 BOOL optionAudioOnDone       = TRUE;
 BOOL optionDumpIdentical     = FALSE;
 UINT optionIterLevels		 = 10;
+BOOL optionClean			 = FALSE;
+BOOL optionFullClear		 = FALSE;
 
 // List box defs
 static const char LBTITLE[] = {"[Class Informer]"};
@@ -417,7 +419,7 @@ void CORE_Process(int arg)
 	        }
 
 	        // Do UI
-            if (DoMainDialog(optionPlaceStructs, optionProcessStatic, optionOverwriteComments, optionAudioOnDone))
+            if (DoMainDialog(optionPlaceStructs, optionProcessStatic, optionOverwriteComments, optionAudioOnDone, optionClean, optionFullClear))
             {
                 msg("- Canceled -\n\n");
                 return;
@@ -2800,30 +2802,25 @@ static BOOL dumpVftables()
 		qfprintf(fClassIdc, "			auto jea = getRelJmpTarget(xea);\n");
 		qfprintf(fClassIdc, "			if (jea == BADADDR)\n");
 		qfprintf(fClassIdc, "			{\n");
+		qfprintf(fClassIdc, "				if (funcName != \"\")\n");
+		qfprintf(fClassIdc, "					MakeNameEx(xea, funcName, SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
+		qfprintf(fClassIdc, "				else\n");
 		qfprintf(fClassIdc, "				if (funcComment != \"\")\n");
 		qfprintf(fClassIdc, "				{\n");
 		qfprintf(fClassIdc, "					MakeComm(ea, funcComment);\n");
-		qfprintf(fClassIdc, "					if (funcName != \"\")\n");
-		qfprintf(fClassIdc, "						MakeComm(xea, funcComment);\n");
 		qfprintf(fClassIdc, "				}\n");
-		qfprintf(fClassIdc, "				if (funcName != \"\")\n");
-		qfprintf(fClassIdc, "					MakeNameEx(xea, funcName, SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
 		qfprintf(fClassIdc, "			}\n");
 		qfprintf(fClassIdc, "			else\n");
 		qfprintf(fClassIdc, "			{\n");
-		qfprintf(fClassIdc, "				if (funcComment != \"\")\n");
-		qfprintf(fClassIdc, "				{\n");
-		qfprintf(fClassIdc, "					MakeComm(ea, funcComment);\n");
-		qfprintf(fClassIdc, "					if (funcName != \"\")\n");
-		qfprintf(fClassIdc, "					{\n");
-		qfprintf(fClassIdc, "						MakeComm(xea, funcComment);\n");
-		qfprintf(fClassIdc, "						MakeComm(jea, funcComment);\n");
-		qfprintf(fClassIdc, "					}\n");
-		qfprintf(fClassIdc, "				}\n");
 		qfprintf(fClassIdc, "				if (funcName != \"\")\n");
 		qfprintf(fClassIdc, "				{\n");
 		qfprintf(fClassIdc, "					MakeNameEx(xea, \"\", SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
 		qfprintf(fClassIdc, "					MakeNameEx(jea, funcName, SN_NOCHECK + SN_PUBLIC + SN_NOWARN);\n");
+		qfprintf(fClassIdc, "				}\n");
+		qfprintf(fClassIdc, "				else\n");
+		qfprintf(fClassIdc, "				if (funcComment != \"\")\n");
+		qfprintf(fClassIdc, "				{\n");
+		qfprintf(fClassIdc, "					MakeComm(ea, funcComment);\n");
 		qfprintf(fClassIdc, "				}\n");
 		qfprintf(fClassIdc, "			}\n");
 		qfprintf(fClassIdc, "			ea = ea + pointerSize;\n");
@@ -2975,43 +2972,55 @@ static BOOL dumpVftables()
 						j += (ci->m_numBaseClasses - 1);
 					parentCount++;
 				}
-				qfprintf(fClassIncHpp, "%s\n", "{");
+				qfprintf(fClassIncHpp, "{ //\tvft=" EAFORMAT "\n", (UINT)-1 != aCI.m_vft ? aCI.m_vft : 0);
 				dumpClassMembers(fClassIncHpp, aCI, aML, false, true);
 				qfprintf(fClassIncHpp, "};\t//\t%04X\n\n", aCI.m_size);
 
-				UINT nameCount = 0;
-				for (UINT j = 0; j < aML.size(); j++)
+				if ((UINT)-1 != aCI.m_vft)
 				{
-					vftable::EntryInfo e = aML[j];
-					if (!e.isDefault && !e.isIdentical && e.isMember)
-						nameCount++;
-				}
-				if (nameCount)
-				{
-					// Start the class in IDC script
-					qfprintf(fClassIdc, "				vtblName = \"%s\"; // %s %s\n", get_true_name(aCI.m_vft).c_str(), aCI.m_colName, aCI.m_className);
-					qfprintf(fClassIdc, "				ea = LocByName(vtblName);\n");
-					qfprintf(fClassIdc, "				if (ea == BADADDR || vtblName == \"\")\n");
-					qfprintf(fClassIdc, "				{\n");
-					qfprintf(fClassIdc, "					Message(\"No label found for '%%s'\\n\", vtblName);\n");
-					qfprintf(fClassIdc, "				}\n");
-					qfprintf(fClassIdc, "				else\n");
-					qfprintf(fClassIdc, "				{\n");
-					qfprintf(fClassIdc, "					Jump(ea);\n");
-					qfprintf(fClassIdc, "					Message(\"Working on class %%s having %%d virtual members\\n\", vtblName, %d);\n", nameCount);
+					UINT nameCount = 0;
+					for (UINT j = 0; j < aML.size(); j++)
+					{
+						vftable::EntryInfo e = aML[j];
+						if (!e.IsDefault() && !e.IsIdentical() && !e.IsInherited())
+							nameCount++;
+					}
+					if (nameCount)
+					{
+						// Start the class in IDC script
+						qfprintf(fClassIdc, "				vtblName = \"%s\"; // '%s' '%s'\n", get_true_name(aCI.m_vft).c_str(), aCI.m_colName, aCI.m_className);
+						qfprintf(fClassIdc, "				if (vtblName != \"\")\n");
+						qfprintf(fClassIdc, "				{\n");
+						qfprintf(fClassIdc, "					ea = LocByName(vtblName);\n");
+						qfprintf(fClassIdc, "					if (ea == BADADDR)\n");
+						qfprintf(fClassIdc, "					{\n");
+						qfprintf(fClassIdc, "						Message(\"No label found for '%%s'\\n\", vtblName);\n");
+						qfprintf(fClassIdc, "					}\n");
+						qfprintf(fClassIdc, "					else\n");
+						qfprintf(fClassIdc, "					{\n");
+						qfprintf(fClassIdc, "						Jump(ea);\n");
+						qfprintf(fClassIdc, "						Message(\"Working on class %%s having %%d virtual members from a total of %%d\\n\", vtblName, %d, %d);\n", nameCount, aML.size());
 
-					if (strlen(aCI.m_colName))
-						for (UINT j = 0; j < aML.size(); j++)
-						{
-							vftable::EntryInfo e = aML[j];
-							if (!e.IsDefault() && !e.IsIdentical() && e.IsMember())
-								qfprintf(fClassIdc, "					ea = DoFunc(ea, \"%s\", \"%s\");\n", e.isOutOfHierarchy ? "" : e.fullName.c_str(), e.comment.c_str());
-							else
-								qfprintf(fClassIdc, "					ea = ea + pointerSize;\n");
-						}
-					// End the class in IDC script
-					qfprintf(fClassIdc, "				}\n");
-					qfprintf(fClassIdc, "\n");
+						UINT skipped = 0;
+						if (strlen(aCI.m_colName))
+							for (UINT j = 0; j < aML.size(); j++)
+							{
+								vftable::EntryInfo e = aML[j];
+								if (!e.IsDefault() && !e.IsIdentical() && !e.IsInherited())
+								{
+									if (skipped)
+										qfprintf(fClassIdc, "						ea = ea + pointerSize*%d;\n", skipped);
+									qfprintf(fClassIdc, "						ea = DoFunc(ea, \"%s\", \"%s\");\n", e.isOutOfHierarchy ? "" : e.fullName.c_str(), e.comment.c_str());
+									skipped = 0;
+								}
+								else
+									skipped++;
+							}
+						// End the class in IDC script
+						qfprintf(fClassIdc, "					}\n");
+						qfprintf(fClassIdc, "				}\n");
+						qfprintf(fClassIdc, "\n");
+					}
 				}
 			}
 		}
@@ -3089,7 +3098,7 @@ static BOOL dumpVftables()
 				{
 					char plainName[MAXSTR];
 					getPlainTypeName(RTTI::classList[i].m_bcdlist[k].m_name, plainName);
-					qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";" EAFORMAT "\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, RTTI::classList[i].m_bcdlist[k].m_attribute);
+					qfprintf(fClassHierarchy, "%d;%d;\"%s\";\"%s\";%08X\n", i, j, plainName, RTTI::classList[i].m_bcdlist[k].m_name, (UINT32)RTTI::classList[i].m_bcdlist[k].m_attribute);
 				}
 			}
 
@@ -3191,11 +3200,13 @@ static BOOL getRttiData()
         if(findVftables())
             return(TRUE);
 
-		if (OpenFiles())
+		if (!optionClean && !optionFullClear && OpenFiles())
 #ifndef __DEBUG
 			try
 #endif
 		{
+			msg("\nDumping vftables.\n");
+			refreshUI();
 			if (dumpVftables())
 				return(TRUE);
 
@@ -3204,6 +3215,7 @@ static BOOL getRttiData()
 			// Could use the unlocated ref lists typeDescList & colList around for possible separate listing, etc.
 			// They get cleaned up on return of this function anyhow.
 
+			// ==== Find and process vftables
 			if (dumpFuncs())
 				return(TRUE);
 

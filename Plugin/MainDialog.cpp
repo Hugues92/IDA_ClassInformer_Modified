@@ -10,7 +10,7 @@
 #include <QtWidgets/QDialogButtonBox>
 
 
-MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone) : QDialog(QApplication::activeWindow(), 0)
+MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone, BOOL &optionClean, BOOL &optionFullClear) : QDialog(QApplication::activeWindow(), 0)
 {
     // Required for static library resources
     Q_INIT_RESOURCE(QtResource);
@@ -25,6 +25,8 @@ MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL
     INITSTATE(checkBox2, optionProcessStatic);
     INITSTATE(checkBox3, optionOverwriteComments);
     INITSTATE(checkBox4, optionAudioOnDone);
+    INITSTATE(checkBox5, optionClean);
+    INITSTATE(checkBox6, optionFullClear);
     #undef INITSTATE
 
     // Apply style sheet
@@ -34,9 +36,9 @@ MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL
 }
 
 // Do main dialog, return TRUE if canceled
-BOOL DoMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone)
+BOOL DoMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone, BOOL &optionClean, BOOL &optionFullClear)
 {
-    MainDialog dlg = MainDialog(optionPlaceStructs, optionProcessStatic, optionOverwriteComments, optionAudioOnDone);
+    MainDialog dlg = MainDialog(optionPlaceStructs, optionProcessStatic, optionOverwriteComments, optionAudioOnDone, optionClean, optionFullClear);
     if (dlg.exec())
     {
         #define CHECKSTATE(obj,var) var = dlg.obj->isChecked()
@@ -44,6 +46,8 @@ BOOL DoMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &opt
         CHECKSTATE(checkBox2, optionProcessStatic);
         CHECKSTATE(checkBox3, optionOverwriteComments);
         CHECKSTATE(checkBox4, optionAudioOnDone);
+        CHECKSTATE(checkBox5, optionClean);
+        CHECKSTATE(checkBox6, optionFullClear);
         #undef CHECKSTATE
 
         return(FALSE);

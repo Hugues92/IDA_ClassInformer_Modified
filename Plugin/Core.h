@@ -18,4 +18,4 @@ extern BOOL getPlainTypeName(__in LPCSTR mangled, __out_bcount(MAXSTR) LPSTR out
 extern BOOL isTempName(ea_t ear);
 extern void clearDefaultName(ea_t ear);
 
-extern BOOL optionOverwriteComments, optionPlaceStructs;
+extern BOOL optionOverwriteComments, optionPlaceStructs, optionClean, optionFullClear;

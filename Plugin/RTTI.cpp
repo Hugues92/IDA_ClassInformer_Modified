@@ -155,10 +155,17 @@ static struc_t *AddStruct(__out tid_t &id, __in LPCSTR name, LPCSTR comment)
     struc_t *structPtr = NULL;
 
     // If it exists get current def else create it
+	tid_t t = netnode(name);
     id = get_struc_id(name);
-    if (id == BADADDR)
-        id = add_struc(BADADDR, name);
-    if (id != BADADDR)
+    if (BADADDR == id)
+		if (BADADDR == t)
+			id = add_struc(BADADDR, name);
+		else
+		{
+			msgR("** AddStruct(\"%s\") failed with tid="EAFORMAT"! Name in use for something else!\n", name, t);
+			return NULL;
+		}
+	if (BADADDR != id)
         structPtr = get_struc(id);
 
     if (structPtr)
@@ -170,7 +177,7 @@ static struc_t *AddStruct(__out tid_t &id, __in LPCSTR name, LPCSTR comment)
         rr = rr;
     }
     else
-        msg("** AddStruct(\"%s\") failed!\n", name);
+        msg("** AddStruct(\"%s\") failed with id="EAFORMAT"!\n", name, id);
 
     return(structPtr);
 }
@@ -1319,6 +1326,8 @@ void RTTI::ReplaceForCTypeName(LPSTR cTypeName, LPCSTR currName)
 		while (LPSTR sz = strchr(workingName, ')')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, '[')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, ']')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '{')) *sz = '_';
+		while (LPSTR sz = strchr(workingName, '}')) *sz = '_';
 		while (LPSTR sz = strchr(workingName, '~')) *sz = '_';
 		if (strlen(workingName) < (MAXSTR - 25))
 		{

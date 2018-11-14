@@ -957,13 +957,77 @@ int vftable::tryKnownMember(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR prefixN
 	//#define IsPattern(Address, Pattern) (find_binary(Address, Address+(SIZESTR(Pattern)/2), Pattern, 16, (SEARCH_DOWN | SEARCH_NOBRK | SEARCH_NOSHOW)) == Address)
 
 	if (eaMember && (eaMember != BADADDR))
-	{
-		EntryInfo entryInfo = EntryInfo(iIndex, vft - iIndex * sizeof(ea_t), parentvft, prefixName, vfMemberList);
-		if (vfMemberList->size()>iIndex)
-			(*vfMemberList)[iIndex] = entryInfo;
+		if (optionClean || optionFullClear)
+		{
+			char szCurrName[MAXSTR] = "";
+			LPSTR szTemp = NULL;
+
+			flags_t flags = getFlags((ea_t)eaMember);
+			flags_t vftflags = getFlags(vft);
+
+			//msg("%s  " EAFORMAT " ** Processing member %s (%d) at " EAFORMAT " from " EAFORMAT " [" EAFORMAT "] **\n", eaJump != BADADDR ? "\t" : "", eaMember, szNewName, iIndex, vft, parentvft, flags);
+
+			char szCmnt[MAXSTR] = "";
+			bool isDefaultCmnt = (optionFullClear && hasDefaultComment(vft, szCmnt, &szTemp)) || hasDefaultComment(vft, szCmnt);
+			if (isDefaultCmnt)
+				set_cmt(vft, "", false);
+			//msg("  " EAFORMAT " ** Comment '%s' is default ? %d **\n", eaMember, szCmnt, isDefaultCmnt);
+
+			// Check if it has a default name
+			bool isDefault = false;
+			if (has_name(flags) && !has_dummy_name(flags))
+			{
+				qstring q = get_true_name(eaMember);
+				strcpy_s(szCurrName, q.c_str());
+				isDefault = (optionFullClear && (szCurrName == strstr(szCurrName, szClassName))) || IsDefault(vft, eaMember, iIndex, szClassName, szCurrName);
+			}
+
+			if (isDefault)
+			{
+				// Should be code
+				if (!isCode(flags))
+				{
+					fixFunction(eaMember);
+					flags = getFlags((ea_t)eaMember);
+				}
+				if (isCode(flags))
+				{
+					ea_t ea = eaMember;
+					ea_t eaAddress = BADADDR;
+					while ((eaAddress = getRelJmpTarget(ea)) != BADADDR)
+					{
+						set_name(ea, "", SN_NOWARN);	// will recalc the j_Name when Name is updated
+						set_cmt(ea, "", false);
+						ea = eaAddress;
+					}
+
+					if (ea != BADADDR)
+					{
+						set_name(ea, "", SN_NOWARN);
+						bool isDefaultCmnt = hasDefaultComment(ea, szCmnt, &szTemp) || (0 == strlen(szCmnt));
+						if (isDefaultCmnt)
+							set_cmt(ea, "", false);
+						//msg("%s =" EAFORMAT " ** Processed member %s (%d) at " EAFORMAT " from " EAFORMAT " [" EAFORMAT "] **\n", eaJump != BADADDR ? "\t" : "", ea, szCurrName, iIndex, vft, parentvft, flags);
+					}
+				}
+				else
+					msg(" " EAFORMAT " ** Not code at this member! **\n", eaMember);
+			}
+
+			isDefaultCmnt = hasDefaultComment(eaMember, szCmnt, &szTemp);
+			if (isDefaultCmnt)
+				set_cmt(eaMember, "", false);
+
+			//msg("  " EAFORMAT " ** Done member '%s' at %08X (%s) **\n", eaMember, szNewName, vft, szCmnt);
+		}
 		else
-			vfMemberList->push_back(entryInfo);
-	}
+		{
+			EntryInfo entryInfo = EntryInfo(iIndex, vft - iIndex * sizeof(ea_t), parentvft, prefixName, vfMemberList);
+			if (vfMemberList->size()>iIndex)
+				(*vfMemberList)[iIndex] = entryInfo;
+			else
+				vfMemberList->push_back(entryInfo);
+		}
 
 	return(iType);
 }

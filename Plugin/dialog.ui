@@ -136,11 +136,55 @@
     <string>Audio on completion</string>
    </property>
   </widget>
-  <widget class="QLabel" name="linkLabel">
+   <widget class="QCheckBox" name="checkBox5">
+     <property name="geometry">
+       <rect>
+         <x>15</x>
+         <y>215</y>
+         <width>151</width>
+         <height>17</height>
+       </rect>
+     </property>
+     <property name="font">
+       <font>
+         <family>Noto Sans</family>
+         <pointsize>10</pointsize>
+       </font>
+     </property>
+     <property name="toolTip">
+       <string notr="true"/>
+     </property>
+     <property name="text">
+       <string>Clean</string>
+     </property>
+   </widget>
+   <widget class="QCheckBox" name="checkBox6">
+     <property name="geometry">
+       <rect>
+         <x>15</x>
+         <y>245</y>
+         <width>151</width>
+         <height>17</height>
+       </rect>
+     </property>
+     <property name="font">
+       <font>
+         <family>Noto Sans</family>
+         <pointsize>10</pointsize>
+       </font>
+     </property>
+     <property name="toolTip">
+       <string notr="true"/>
+     </property>
+     <property name="text">
+       <string>Full Clear</string>
+     </property>
+   </widget>
+   <widget class="QLabel" name="linkLabel">
    <property name="geometry">
     <rect>
      <x>15</x>
-     <y>220</y>
+     <y>280</y>
      <width>136</width>
      <height>16</height>
     </rect>
@@ -247,11 +291,11 @@ By Sirmabus</string>
    <hints>
     <hint type="sourcelabel">
      <x>316</x>
-     <y>260</y>
+     <y>290</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
-     <y>274</y>
+     <y>304</y>
     </hint>
    </hints>
   </connection>
