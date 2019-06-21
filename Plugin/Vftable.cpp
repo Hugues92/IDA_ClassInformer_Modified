@@ -1082,6 +1082,36 @@ void vftable::processMembers(LPCTSTR lpszName, ea_t eaStart, ea_t* eaEnd, LPCTST
 	}
 }
 
+void correctFunction(LPCTSTR className, ea_t start)
+{
+	qstring trueName = get_true_name(start);
+	LPCSTR funcName = trueName.c_str();
+	if (strstr(funcName, className) && (strlen(funcName)>strlen(className) + 2) && (funcName[strlen(className)] == '_') && (funcName[strlen(className) + 1] == '_'))
+	{
+		char newName[MAXSTR];
+		strcpy_s(newName, MAXSTR, funcName);
+		newName[strlen(className)] = ':';
+		newName[strlen(className) + 1] = ':';
+		set_name(start, newName);
+		msgR("\t\t%35s Correct Func:\t%s to %s\n", "Correcting functions names:", funcName, newName);
+	}
+}
+
+void vftable::correctFunctions(LPCTSTR name)
+{
+	// Undefine any temp name
+	UINT fq = get_func_qty();
+	for (UINT index = 0; index < fq; index++)
+	{
+		//if (0 == index % 10000)
+		//	msgR("\t\t%35s Funcs:\t% 7d of % 7d\n", "Deleting temp functions names:", index + 1, fq);
+
+		func_t* funcTo = getn_func(index);
+		if (funcTo)
+			correctFunction(name, funcTo->startEA);
+	}
+}
+
 ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 {
 	ea_t eaMember = BADADDR;

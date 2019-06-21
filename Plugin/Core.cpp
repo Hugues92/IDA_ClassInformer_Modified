@@ -2384,11 +2384,12 @@ void dumpClassMembers(FILE* f, RTTI::classInfo aCI, vftable::VFMemberList aML, b
 
 char THEprefix[MAXSTR] = "";
 static char lastError[MAXSTR] = "";
+static int funcIndex = 0;
 
 bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFromName, FILE* f)
 {
 	bool result = TRUE;
-	char szClassExport[MAXSTR] = "";
+	//char szClassExport[MAXSTR] = "";
 	xrefblk_t xb;
 	if (funcTo && (optionIterLevels > level))
 	{
@@ -2399,11 +2400,11 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 			char funcToName[MAXSTR] = "";
 			{
 				qstring fN;
-				if (get_long_name(&fN, funcTo->startEA))
+				if (get_visible_name(&fN, funcTo->startEA))
 					RTTI::ReplaceForCTypeName(funcToName, fN.c_str());
 			}
 			UINT callIndex = 0;
-			::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s " EAFORMAT " at level %d for index %d", THEprefix, funcToName, funcTo->startEA, level, index);
+			//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s " EAFORMAT " at level %d for index %d", THEprefix, funcToName, funcTo->startEA, level, index);
 			//qfprintf(f, "%s\n", szClassExport);
 			for (bool ok = xb.first_to(funcTo->startEA, XREF_ALL); ok; ok = xb.next_to())
 			{
@@ -2415,22 +2416,22 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 				{
 					flags_t funcFromFlags = getFlags(funcFrom->startEA);
 					if (!has_name(funcFromFlags) || has_dummy_name(funcFromFlags))
-						if (!LookupFuncToName(funcFrom, callIndex, ++level, funcName, f))
+						if (!LookupFuncToName(funcFrom, ++funcIndex, ++level, funcName, f))
 							break;
 					if (has_name(funcFromFlags) && !has_dummy_name(funcFromFlags))
 					{
 						qstring fN;
-						if (get_long_name(&fN, funcFrom->startEA))
+						if (get_visible_name(&fN, funcFrom->startEA))
 							RTTI::ReplaceForCTypeName(funcName, fN.c_str());
 						else
 							strcpy_s(funcName, "NONAME__");
-						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
-							THEprefix, funcToName, funcTo->startEA, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
+						//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%sxref to %s " EAFORMAT " : From:" EAFORMAT " Func:" EAFORMAT " '%s'",
+						//	THEprefix, funcToName, funcTo->startEA, xb.from, funcFrom ? funcFrom->startEA : BADADDR, funcName);
 						//qfprintf(f, "%s\n", szClassExport);
 						//msgR("%s\n", szClassExport);
 						char newFuncName[MAXSTR] = "";
 						::qsnprintf(funcFromName, MAXSTR - 1, "%s%s_from%0.4d", strstr(funcName, "__ICI__") ? "" : "__ICI__", funcName, index);
-						::qsnprintf(newFuncName, MAXSTR - 1, "//\t\t%srenamed to '%s'", THEprefix, funcFromName);
+						//::qsnprintf(newFuncName, MAXSTR - 1, "//\t\t%srenamed to '%s'", THEprefix, funcFromName);
 						//qfprintf(f, "%s\n", newFuncName);
 						if (!(0 == stricmp(lastError, funcFromName)))
 							if (!set_name(funcTo->startEA, funcFromName))
@@ -2446,7 +2447,7 @@ bool LookupFuncToName(func_t *funcTo, size_t index, size_t level, char * funcFro
 		else
 		{
 			qstring fN;
-			if (get_long_name(&fN, funcTo->startEA))
+			if (get_visible_name(&fN, funcTo->startEA))
 				RTTI::ReplaceForCTypeName(funcFromName, fN.c_str());
 			//char newFuncName[MAXSTR] = "";
 			//::qsnprintf(newFuncName, MAXSTR - 1, "//\t\t%sfound named as '%s'", THEprefix, funcFromName);
@@ -2468,7 +2469,7 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 	char funcFromName[MAXSTR] = "";
 	{
 		qstring fN;
-		if (get_long_name(&fN, funcFrom->startEA))
+		if (get_visible_name(&fN, funcFrom->startEA))
 			RTTI::ReplaceForCTypeName(funcFromName, fN.c_str());
 		else
 			return FALSE;
@@ -2477,6 +2478,7 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 	if (optionIterLevels > level)
 		for (ea_t eaCurr = funcFrom->startEA; eaCurr < funcFrom->endEA; eaCurr = nextaddr(eaCurr))
 		{
+			callIndex++;
 			//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " at level %d for index %d", THEprefix, funcFromName, eaCurr, level, index);
 			//qfprintf(f, "%s\n", szClassExport);
 			//strcat_s(THEprefix, "  ");
@@ -2485,7 +2487,7 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 				char funcName[MAXSTR];
 				{
 					qstring fN;
-					if (get_long_name(&fN, xb.to))
+					if (get_visible_name(&fN, xb.to))
 						RTTI::ReplaceForCTypeName(funcName, fN.c_str());
 					else
 						strcpy_s(funcName, "NONAME__");
@@ -2496,7 +2498,6 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 				func_t* funcTo = get_func(xb.to);
 				if (funcTo && (funcTo->startEA != funcFrom->startEA))
 				{
-					callIndex++;
 					//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " Func:" EAFORMAT,
 					//	THEprefix, funcFromName, eaCurr, xb.to, funcTo ? funcTo->startEA : BADADDR);
 					//qfprintf(f, "%s\n", szClassExport);
@@ -2505,7 +2506,7 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 					{
 						{
 							qstring fN;
-							if (get_long_name(&fN, funcTo->startEA))
+							if (get_visible_name(&fN, funcTo->startEA))
 								RTTI::ReplaceForCTypeName(funcName, fN.c_str());
 							else
 								strcpy_s(funcName, "NONAME__");
@@ -2513,8 +2514,8 @@ bool LookupFuncFromName(func_t *funcFrom, size_t index, size_t level, char * fun
 						char newFuncName[MAXSTR] = "";
 						::qsnprintf(funcToName, MAXSTR - 1, "%s%s_to%0.4d", strstr(funcFromName, "__ICI__") ? "" : "__ICI__", 
 							strlen(funcFromName) ? funcFromName : "NONAME__", callIndex);
-						::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " Func:" EAFORMAT " '%s' changed to '%s'",
-							THEprefix, funcFromName, eaCurr, xb.to, funcTo ? funcTo->startEA : BADADDR, funcName, funcToName);
+						//::qsnprintf(szClassExport, MAXSTR - 1, "//\t%scref from '%s' " EAFORMAT " : To:" EAFORMAT " Func:" EAFORMAT " '%s' changed to '%s'",
+						//	THEprefix, funcFromName, eaCurr, xb.to, funcTo ? funcTo->startEA : BADADDR, funcName, funcToName);
 						//qfprintf(f, "%s\n", szClassExport);
 						//msgR("%s\n", szClassExport);
 						//qfprintf(f, "%s\n", newFuncName);
@@ -3160,7 +3161,7 @@ static BOOL dumpFuncs()
 			char funcFromName[MAXSTR] = "";
 			func_t* funcTo = getn_func(index);
 			if (funcTo)
-				/*if (*/LookupFuncToName(funcTo, index, 0, funcFromName, fClassIncTemp)/*)
+				/*if (*/LookupFuncToName(funcTo, ++funcIndex, 0, funcFromName, fClassIncTemp)/*)
 					qfprintf(fClassIncTemp, "\n")*/;
 		}
 	}

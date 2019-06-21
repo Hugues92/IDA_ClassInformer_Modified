@@ -125,6 +125,7 @@ namespace vftable
 
 	// Identify and name common member functions
 	void processMembers(LPCTSTR name, ea_t eaStart, ea_t* eaEnd, LPCSTR prefixName, ea_t parentvft, UINT parentCount, VFMemberList* vfMemberList);
+	void correctFunctions(LPCTSTR name);
 	bool IsClass(LPCSTR szClassName, LPSTR szCurrName, bool translate);
 	ea_t getMemberName(LPSTR name, ea_t eaAddress);
 	ea_t getMemberShortName(LPSTR name, ea_t eaAddress);
