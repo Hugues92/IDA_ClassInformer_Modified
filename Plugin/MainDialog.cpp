@@ -10,12 +10,9 @@
 #include <QtWidgets/QDialogButtonBox>
 
 
-MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone, BOOL &optionClean, BOOL &optionFullClear) : QDialog(QApplication::activeWindow(), 0)
+MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionAudioOnDone, SegSelect::segments **segs, BOOL &optionClean, BOOL &optionFullClear) : QDialog(QApplication::activeWindow(), 0)
 {
-    // Required for static library resources
-    Q_INIT_RESOURCE(QtResource);
-
-    setupUi(this);
+    Ui::MainCIDialog::setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     buttonBox->addButton("CONTINUE", QDialogButtonBox::AcceptRole);
     buttonBox->addButton("CANCEL", QDialogButtonBox::RejectRole);
@@ -23,34 +20,41 @@ MainDialog::MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL
     #define INITSTATE(obj,state) obj->setCheckState((state == TRUE) ? Qt::Checked : Qt::Unchecked);
     INITSTATE(checkBox1, optionPlaceStructs);
     INITSTATE(checkBox2, optionProcessStatic);
-    INITSTATE(checkBox3, optionOverwriteComments);
-    INITSTATE(checkBox4, optionAudioOnDone);
-    INITSTATE(checkBox5, optionClean);
-    INITSTATE(checkBox6, optionFullClear);
+    INITSTATE(checkBox3, optionAudioOnDone);
+    INITSTATE(checkBox4, optionClean);
+    INITSTATE(checkBox5, optionFullClear);
     #undef INITSTATE
 
     // Apply style sheet
-    QFile file(STYLE_PATH"style.qss");
+    QFile file(STYLE_PATH "style.qss");
     if (file.open(QFile::ReadOnly | QFile::Text))
         setStyleSheet(QTextStream(&file).readAll());
+
+	this->segs = segs;
+}
+
+// On choose segments
+void MainDialog::segmentSelect()
+{
+	*segs = SegSelect::select((SegSelect::DATA_HINT | SegSelect::RDATA_HINT), "Choose segments to scan");
 }
 
 // Do main dialog, return TRUE if canceled
-BOOL DoMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone, BOOL &optionClean, BOOL &optionFullClear)
+BOOL doMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionAudioOnDone, SegSelect::segments **segs, BOOL &optionClean, BOOL &optionFullClear)
 {
-    MainDialog dlg = MainDialog(optionPlaceStructs, optionProcessStatic, optionOverwriteComments, optionAudioOnDone, optionClean, optionFullClear);
-    if (dlg.exec())
+	BOOL result = TRUE;
+    MainDialog *dlg = new MainDialog(optionPlaceStructs, optionProcessStatic, optionAudioOnDone, segs, optionClean, optionFullClear);
+    if (dlg->exec())
     {
-        #define CHECKSTATE(obj,var) var = dlg.obj->isChecked()
+        #define CHECKSTATE(obj,var) var = dlg->obj->isChecked()
         CHECKSTATE(checkBox1, optionPlaceStructs);
         CHECKSTATE(checkBox2, optionProcessStatic);
-        CHECKSTATE(checkBox3, optionOverwriteComments);
-        CHECKSTATE(checkBox4, optionAudioOnDone);
-        CHECKSTATE(checkBox5, optionClean);
-        CHECKSTATE(checkBox6, optionFullClear);
+        CHECKSTATE(checkBox3, optionAudioOnDone);
+        CHECKSTATE(checkBox4, optionClean);
+        CHECKSTATE(checkBox5, optionFullClear);
         #undef CHECKSTATE
-
-        return(FALSE);
+		result = FALSE;
     }
-    return(TRUE);
+	delete dlg;
+    return(result);
 }

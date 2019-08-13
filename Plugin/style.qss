@@ -7,7 +7,7 @@
 QWidget
 {
 	color: #E0E0E0;
-   background-color: #303030;
+    background-color: #303030;
 
 	font-family: Noto Sans, Tahoma;
 	font-size: 13px;
@@ -35,6 +35,21 @@ QPushButton:pressed
 QPushButton:focus
 {
 	background-color: #4A4A4A;
+}
+
+/* Option push button */
+QPushButton#pushButton1
+{ 
+	color: #CE93D8;
+	background-color: #3F3F3D;
+}
+QPushButton#pushButton1:hover
+{
+	background-color: #505050;
+}
+QPushButton#pushButton1:pressed
+{
+	background-color: #5F5F5D;
 }
 
 QDialogButtonBox
@@ -75,8 +90,8 @@ QCheckBox::indicator:checked
 {
 	border: 2px solid #CE93D8;
 	border-radius: 1px;
-   width: 10px;
-   height: 10px;
+	width: 10px;
+	height: 10px;
 	image: url(:/classinf/checkbox-checked.png);
 
 }
@@ -87,4 +102,38 @@ QCheckBox::hover
 QCheckBox::indicator:unchecked:hover
 {
 	background-color: #4A4A4A;
+}
+
+/* ---- For char set select dialog ---- */
+
+QHeaderView
+{
+	border-top: 0px;
+	border-bottom: 3px solid #C8C8C8;
+}
+QHeaderView::section
+{
+	height: 23px;
+
+	font-family: Noto Sans,Consolas;
+	font-weight: bold;
+
+	color: #FFFFFF;
+	background-color: #9575CD;	
+	border: 0px;
+}
+
+QTableView
+{
+	font-family: Noto Sans,Consolas;
+	color: #404040;
+	background-color: #FDFDFD;
+	selection-color: #404040;
+	selection-background-color: #FDFDFD;
+}
+
+/* QTableView seperator line */
+QTableWidget::item
+{
+	border-bottom: 1px solid #EEEEEE;
 }

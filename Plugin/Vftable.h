@@ -21,7 +21,7 @@ namespace vftable
 	// Returns TRUE if mangled name indicates a vftable
 	inline BOOL isValid(LPCSTR name){ return(*((PDWORD) name) == 0x375F3F3F /*"??_7"*/); }
 
-	typedef stdext::hash_map<ea_t, bool> VFGuessedFunc;
+	typedef std::unordered_map<ea_t, bool> VFGuessedFunc;
 	extern VFGuessedFunc vfGuessedFunc;
 
 	extern const char *defaultMemberFormat;			// = "Func%04X";					//	default: index
@@ -129,7 +129,5 @@ namespace vftable
 	bool IsClass(LPCSTR szClassName, LPSTR szCurrName, bool translate);
 	ea_t getMemberName(LPSTR name, ea_t eaAddress);
 	ea_t getMemberShortName(LPSTR name, ea_t eaAddress);
-
-//	typedef std::string String;
 
 }

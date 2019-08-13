@@ -1,7 +1,21 @@
-WIP Modified version of IDA ClassInformer
+WIP Modified version of IDA ClassInformer from https://sourceforge.net/projects/classinformer/ new branch forked from r4 updated to IDA 7.3 and VS2017.
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-original readme:
-================
+Updated on 2019 08 12.
+
+Very lightly tested so far (only one win 32 exe upgraded) but I get the same result as with my last IDA legacy version.
+There is at least a hugue bug in the commented out part.
+
+To compile 
+  define IDADIR64 to point to your base IDA directory
+  extract the IDA sdk in a subdirectory named idasdk.
+  define IDASUPPORT64 to point to the base directory where you extracted ida-support-library
+  QTDIR should be set through the VS interface.
+
+The current r4 version readme is in ClassInformer.txt. This file is unchanged in the fork.
+
+original readme for a previous version:
+=======================================
 
 Class Informer:
 =========================================================
@@ -19,7 +33,7 @@ end of original readme.
 
 Changes to MSVC vftables in Class Informer Modified:
 ====================================================
-	Compiled with the 6.9 SDK.
+	Compiled with the 7.3 SDK.
 	Implemented virtual functions naming (as ClassName::FuncXXXX) (Name propagated through comments when needed)
 		Note: manually naming a parent or a child virtual function should propagate on next run of the plugin.
 		Functions used in multiple unrelated classes are not renamed.
@@ -58,3 +72,6 @@ Changes to MSVC vftables in Class Informer Modified:
 		Include file dumping known information about constructor, destructor and classes size.
 		List of RTTI Type Descriptor (??_R0?AV...) for DynamicCast
 		And currently useless text file used as a scratch pad.
+
+  Renamed as Modified for B.S, even though the Bethesda Games part is commented out until I can correct a major bug.
+  

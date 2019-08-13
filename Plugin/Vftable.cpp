@@ -5,7 +5,7 @@
 //
 // ****************************************************************************
 #include "stdafx.h"
-#include "Core.h"
+#include "Main.h"
 #include "Vftable.h"
 #include "RTTI.h"
 #include "pro.h"
@@ -17,7 +17,7 @@ namespace vftable
 	bool IsMember(ea_t vft, ea_t eaMember, UINT iIndex, LPSTR szCurrName, LPSTR szBaseName, LPSTR* szMember);
 	bool extractNames(ea_t sub, ea_t entry, UINT iIndex, LPSTR currentName, LPSTR baseName, LPSTR* memberName, LPSTR szCmnt);
 	bool hasDefaultComment(ea_t entry, LPSTR cmnt, LPSTR* cmntData);
-	bool hasDefaultComment(ea_t entry, LPSTR cmnt);
+	bool hasDefaultComment(ea_t entry, qstring cmnt);
 
 	const char *defaultMemberFormat = "Func%04X";	//	default: index
 	const char *defaultNameFormat = "%s::%s";	//	default: className defaultName
@@ -33,17 +33,16 @@ namespace vftable
 // Return TRUE along with info if valid vftable parsed at address
 BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
 {
-    ZeroMemory(&info, sizeof(vtinfo));
 	int motive = 0;
 
 	// Start of a vft should have an xref and a name (auto, or user, etc).
     // Ideal flags 32bit: FF_DWRD, FF_0OFF, FF_REF, FF_NAME, FF_DATA, FF_IVL
     //dumpFlags(ea);
-    flags_t flags = get_flags_novalue(ea);
+    flags_t flags = get_flags(ea);
 	bool properVFT = TRUE;
-	//properVFT = properVFT && hasRef(flags);
+	//properVFT = properVFT && has_xref(flags);
 	//properVFT = properVFT && has_any_name(flags);
-	properVFT = properVFT && (isEa(flags) || isUnknown(flags));
+	properVFT = properVFT && (isEa(flags) || is_unknown(flags));
 
 	if(!properVFT)
 	{
@@ -52,6 +51,8 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
 	}
 	else
     {
+		ZeroMemory(&info, sizeof(vtinfo));
+
         // Get raw (auto-generated mangled, or user named) vft name
         //if (!get_name(BADADDR, ea, info.name, SIZESTR(info.name)))
         //    msg(EAFORMAT" ** vftable::getTableInfo(): failed to get raw name!\n", ea);
@@ -61,11 +62,11 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
 		size_t index = 0;
         while (TRUE)
         {
-            // Should be an ea_t offset to a function here (could be unknown if dirty IDB)
+            // Should be an ea_t sized offset to a function here (could be unknown if dirty IDB)
             // Ideal flags for 32bit: FF_DWRD, FF_0OFF, FF_REF, FF_NAME, FF_DATA, FF_IVL
             //dumpFlags(ea);
-            flags_t indexFlags = get_flags_novalue(ea);
-            if (!(isEa(indexFlags) || isUnknown(indexFlags)))
+            flags_t indexFlags = get_flags(ea);
+            if (!(isEa(indexFlags) || is_unknown(indexFlags)))
             {
                 motive = 1;
                 break;
@@ -75,7 +76,7 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
             ea_t memberPtr = getEa(ea);
             if (!(memberPtr && (memberPtr != BADADDR)))
             {
-                // vft's often have a zero ea_t (NULL pointer?) following, fix it
+                // vft's often have a trailing zero ea_t (alignment, or?), fix it
                 if (memberPtr == 0)
                     fixEa(ea);
 
@@ -84,10 +85,10 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
             }
 
             // Should see code for a good vft method here, but it could be dirty
-            flags_t flags = get_flags_novalue(memberPtr);
-            if (!(isCode(flags) || isUnknown(flags)))
+            flags_t flags = get_flags(memberPtr);
+            if (!(is_code(flags) || is_unknown(flags)))
                 if (ea == start)
-                    do_unknown(memberPtr, DOUNK_SIMPLE);
+                    del_items(memberPtr);
                 else
                 {
                     motive = 3;
@@ -97,7 +98,7 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
             if (index && (index >= parentSize))	// unless we are still smaller than our parent
             {
                 // If we see a ref after first index it's probably the beginning of the next vft or something else
-                if (hasRef(indexFlags))
+                if (has_xref(indexFlags))
                 {
                     motive = 4;
                     break;
@@ -113,7 +114,7 @@ BOOL vftable::getTableInfo(ea_t ea, vtinfo &info, size_t parentSize)
 			else  // Just for debugging
 			{
 				// If we see a ref at the first index it must be a function pointer
-				if (hasRef(indexFlags))
+				if (has_xref(indexFlags))
 				{
 					motive = 4;
 				}
@@ -184,35 +185,35 @@ static ea_t getRelJmpTarget(ea_t eaAddress)
 
 qstring getNonDefaultComment(flags_t f, ea_t ea, LPCSTR defaultComment)
 {
-	char s[MAXSTR] = "";
+	//char s[MAXSTR] = "";
+	qstring s;
 	if (has_cmt(f))
 	{
-		get_cmt(ea, false, s, MAXSTR - 1);
+		get_cmt(&s, ea, false);
 		if (!vftable::hasDefaultComment(ea, s))
 		{
-			if (0 == strnicmp(defaultComment, s, MAXSTR - 1))
-				strcpy_s(s, "");
+			if (0 == strnicmp(defaultComment, s.c_str(), MAXSTR - 1))
+				s = "";
 			else
-				if (strstr(s, vftable::defaultCommentBase) == s)
+				if (s.find(vftable::defaultCommentBase) == 0)
 				{
 					// Check Index is valid
-					long av = strtol(s + strlen(vftable::defaultCommentBase), NULL, 16);
+					long av = strtol(s.c_str() + strlen(vftable::defaultCommentBase), NULL, 16);
 					long dv = strtol(defaultComment + strlen(vftable::defaultCommentBase), NULL, 16);
 					if (av != dv)
 					{
 						// invalid usage of a function member
-						strcpy_s(s, "");
+						s = "";
 						//msg(" " EAFORMAT " [%s] av:%x dv:%x [%s]\n", ea, defaultComment, av, dv, s);
 					}
 				}
 				else
-					strcpy_s(s, "");
+					s = "";
 		}
 		else
-			strcpy_s(s, "");
+			s = "";
 	}
-	qstring q = s;
-	return q;
+	return s;
 
 }
 
@@ -268,8 +269,8 @@ void guessMember(ea_t eaMember)
 	{
 		bool guessed = false;
 		tinfo_t tif;
-		if (!get_tinfo2(eaMember, &tif))
-			if (guess_tinfo2(eaMember, &tif) && tif.is_func())
+		if (!get_tinfo(&tif, eaMember))
+			if (guess_tinfo(&tif, eaMember) && tif.is_func())
 			{
 				typeMember(eaMember, tif, false);
 				guessed = true;
@@ -411,8 +412,8 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 	while ((next = getRelJmpTarget(newMember)) != BADADDR)
 	{
 		// Should be code
-		flags_t flags = getFlags(newMember);
-		if (!isCode(flags))
+		flags_t flags = get_flags(newMember);
+		if (!is_code(flags))
 			fixFunction(newMember);
 		if (BADADDR == newJump)
 			newJump = newMember;
@@ -420,7 +421,7 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 	}
 	isIdentical = member == newMember;
 
-	entryFlags = getFlags(entry);
+	entryFlags = get_flags(entry);
 
 	// Check if we have a non default comment somewhere
 	qstring currComment = "";
@@ -447,7 +448,7 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 		isOutOfHierarchy = false;
 
 		member = newMember;
-		memberFlags = getFlags(member);
+		memberFlags = get_flags(member);
 		newComment = getNonDefaultComment(memberFlags, member, defaultComment.c_str());
 		if (newComment.length() && 0 == currComment.length())
 			currComment = newComment;
@@ -459,10 +460,10 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 		jumpComment = "";
 		if (BADADDR != newJump)
 		{
-			jumpFlags = getFlags(jump);
+			jumpFlags = get_flags(jump);
 			while ((next = getRelJmpTarget(newJump)) != BADADDR)
 			{
-				flags_t f = getFlags(newJump);
+				flags_t f = get_flags(newJump);
 				newComment = getNonDefaultComment(f, newJump, defaultComment.c_str());
 				if (0 == currComment.length() && newComment.length())
 					currComment = newComment;
@@ -494,13 +495,13 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 	if (propagate || !IsIdentical())
 	{
 		// Extract current name from member
-		memberFlags = getFlags(member);
+		memberFlags = get_flags(member);
 		qstring newFullName = "";
-		qstring currentFullName = get_true_name(member);
+		qstring currentFullName = get_name(member);
 
 		if (get_func(member) && has_name(memberFlags) && !has_dummy_name(memberFlags))
 		{
-			newFullName = get_true_name(member);
+			newFullName = get_name(member);
 			// is it a demangled name ?
 			if (newFullName.length() && newFullName[0] == '?')
 			{
@@ -616,7 +617,7 @@ void vftable::EntryInfo::process(UINT iIndex, LPCSTR szClassName, bool propagate
 			newJump = jump;
 			while ((next = getRelJmpTarget(newJump)) != BADADDR)
 			{
-				flags_t f = getFlags(newJump);
+				flags_t f = get_flags(newJump);
 				newComment = getNonDefaultComment(f, newJump, defaultComment.c_str());
 				if (0 == newComment.length())
 					set_cmt(newJump, comment.c_str(), false);
@@ -838,22 +839,18 @@ bool vftable::IsMember(ea_t vft, ea_t eaMember, UINT iIndex, LPSTR szCurrName, L
 	return isMember;
 }
 
-char * get_any_indented_cmt(ea_t entry)
+const char * get_any_indented_cmt(ea_t entry)
 {
-	static char szTemp[MAXSTR];
-	strcpy_s(szTemp, "");
-	if (0 < get_cmt(entry, false, szTemp, MAXSTR - 1))
-		return szTemp;
-	else
-		if (0 < get_cmt(entry, true, szTemp, MAXSTR - 1))
-			return szTemp;
-		else
-			return "";
+	static qstring szTemp;
+	szTemp = "";
+	if (0 >= get_cmt(&szTemp, entry, false))
+		get_cmt(&szTemp, entry, true);
+	return szTemp.c_str();
 }
 
 bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt, LPSTR* cmntData)
 {
-	flags_t flags = getFlags(entry);
+	flags_t flags = get_flags(entry);
 
 	if (has_cmt(flags))
 	{
@@ -871,63 +868,33 @@ bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt, LPSTR* cmntData)
 	return false;
 }
 
-bool vftable::hasDefaultComment(ea_t entry, LPSTR cmnt)
+bool vftable::hasDefaultComment(ea_t entry, qstring cmnt)
 {
-	flags_t flags = getFlags(entry);
+	flags_t flags = get_flags(entry);
 	bool isDefault = false;
 
 	if (has_cmt(flags))
 	{
-		LPCSTR sz = NULL;
-		strcpy_s(cmnt, MAXSTR - 1, get_any_indented_cmt(entry));
+		cmnt = get_any_indented_cmt(entry);
 		//msg("  " EAFORMAT " ** Comment '%s' **\n", entry, cmnt);
-		if (strstr(cmnt, " (#Func ") == cmnt)
-		{
-			sz = strstr(cmnt, "::Func");
-			if (sz)
-			{
-				// ignore those comments
-				sz = strchr(cmnt, ')');
-				isDefault = true;
-			}
-			else
-			{
-				sz = strstr(cmnt, "::purecall");
-				if (sz)
-				{
-					// ignore those comments
-					sz = strchr(cmnt, ')');
-					isDefault = true;
-				}
-				else
-				{
-					sz = strstr(cmnt, "::_");	// Corrects a bug in previous version of Modified
-					if (sz && (cmnt + (strlen(cmnt) - 3) == sz))
-					{
-						// ignore those comments
-						sz = strchr(cmnt, ')');
-						isDefault = true;
-					}
-				}
-			}
-			//msg("  " EAFORMAT " ** Default comment '%s' [%s] **\n", entry, cmnt, sz);
-			return isDefault;
-		}
+		if (cmnt.find(" (#Func ") == 0)
+			// ignore those comments
+			isDefault = (cmnt.find("::Func") != qstring::npos) || (cmnt.find("::purecall") != qstring::npos);
 	}
 	//else
 	//	msg("  " EAFORMAT " ** No comment **\n", entry);
-	return false;
+	return isDefault;
 }
 
 bool vftable::extractNames(ea_t sub, ea_t entry, UINT iIndex, LPSTR currentName, LPSTR baseName, LPSTR* memberName, LPSTR cmnt)
 {
 	bool isMember = false;
-	flags_t flags = getFlags(sub);
+	flags_t flags = get_flags(sub);
 
 	LPSTR cmntData = NULL;
 	if (get_func(sub) && has_name(flags) && !has_dummy_name(flags))
 	{
-		qstring cn = get_true_name(sub);
+		qstring cn = get_name(sub);
 		if (cn.c_str())
 			strncpy(currentName, cn.c_str(), (MAXSTR - 1));
 		//msg("  " EAFORMAT " ** Processing %s at %08X **\n", sub, currentName, entry);
@@ -962,8 +929,8 @@ int vftable::tryKnownMember(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR prefixN
 			char szCurrName[MAXSTR] = "";
 			LPSTR szTemp = NULL;
 
-			flags_t flags = getFlags((ea_t)eaMember);
-			flags_t vftflags = getFlags(vft);
+			flags_t flags = get_flags((ea_t)eaMember);
+			flags_t vftflags = get_flags(vft);
 
 			//msg("%s  " EAFORMAT " ** Processing member %s (%d) at " EAFORMAT " from " EAFORMAT " [" EAFORMAT "] **\n", eaJump != BADADDR ? "\t" : "", eaMember, szNewName, iIndex, vft, parentvft, flags);
 
@@ -977,7 +944,7 @@ int vftable::tryKnownMember(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR prefixN
 			bool isDefault = false;
 			if (has_name(flags) && !has_dummy_name(flags))
 			{
-				qstring q = get_true_name(eaMember);
+				qstring q = get_name(eaMember);
 				strcpy_s(szCurrName, q.c_str());
 				isDefault = (optionFullClear && (szCurrName == strstr(szCurrName, szClassName))) || IsDefault(vft, eaMember, iIndex, szClassName, szCurrName);
 			}
@@ -985,12 +952,12 @@ int vftable::tryKnownMember(ea_t vft, ea_t eaMember, UINT iIndex, LPCSTR prefixN
 			if (isDefault)
 			{
 				// Should be code
-				if (!isCode(flags))
+				if (!is_code(flags))
 				{
 					fixFunction(eaMember);
-					flags = getFlags((ea_t)eaMember);
+					flags = get_flags((ea_t)eaMember);
 				}
-				if (isCode(flags))
+				if (is_code(flags))
 				{
 					ea_t ea = eaMember;
 					ea_t eaAddress = BADADDR;
@@ -1042,6 +1009,40 @@ Is it helpful vs the problems of naming member functions?
 
 // Process vftable member functions
 
+// Get IDA 32 bit value with verification
+template <class T> BOOL getVerify32_t(ea_t eaPtr, T &rValue)
+{
+	// Location valid?
+	if (is_loaded(eaPtr))
+	{
+		// Get 32bit value
+		rValue = (T)get_32bit(eaPtr);
+		return(TRUE);
+	}
+
+	return(FALSE);
+}
+
+// Get IDA 64 bit value with verification
+template <class T> BOOL getVerify64_t(ea_t eaPtr, T &rValue)
+{
+	// Location valid?
+	if (is_loaded(eaPtr))
+	{
+		// Get 64bit value
+		rValue = (T)get_64bit(eaPtr);
+		return(TRUE);
+	}
+
+	return(FALSE);
+}
+
+#ifdef __EA64__
+#define getVerify_t getVerify64_t
+#else
+#define getVerify_t getVerify32_t
+#endif
+
 // TODO: Just try the fix missing function code
 void vftable::processMembers(LPCTSTR lpszName, ea_t eaStart, ea_t* eaEnd, LPCTSTR prefixName, ea_t parentvft, UINT parentCount, VFMemberList* vfMemberList)
 {
@@ -1084,7 +1085,7 @@ void vftable::processMembers(LPCTSTR lpszName, ea_t eaStart, ea_t* eaEnd, LPCTST
 
 void correctFunction(LPCTSTR className, ea_t start)
 {
-	qstring trueName = get_true_name(start);
+	qstring trueName = get_name(start);
 	LPCSTR funcName = trueName.c_str();
 	if (strstr(funcName, className) && (strlen(funcName)>strlen(className) + 2) && (funcName[strlen(className)] == '_') && (funcName[strlen(className) + 1] == '_'))
 	{
@@ -1100,7 +1101,7 @@ void correctFunction(LPCTSTR className, ea_t start)
 void vftable::correctFunctions(LPCTSTR name)
 {
 	// Undefine any temp name
-	UINT fq = get_func_qty();
+	size_t fq = get_func_qty();
 	for (UINT index = 0; index < fq; index++)
 	{
 		//if (0 == index % 10000)
@@ -1108,7 +1109,7 @@ void vftable::correctFunctions(LPCTSTR name)
 
 		func_t* funcTo = getn_func(index);
 		if (funcTo)
-			correctFunction(name, funcTo->startEA);
+			correctFunction(name, funcTo->start_ea);
 	}
 }
 
@@ -1116,7 +1117,6 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 {
 	ea_t eaMember = BADADDR;
 	bool found = false;
-	char szTemp[MAXSTR] = "";
 	strcpy_s(name, MAXSTR - 1, "");
 	//msg("  " EAFORMAT " GetMemberName:'%s' " EAFORMAT "\n", eaMember, name, eaAddress);
 	if (getVerify_t(eaAddress, eaMember))
@@ -1138,24 +1138,27 @@ ea_t vftable::getMemberName(LPSTR name, ea_t eaAddress)
 			//msg(" !" EAFORMAT " GetMemberName:'%s' " EAFORMAT "\n", eaMember, name, eaAddress);
 			eaAddress = eaMember;
 		}
-		flags_t flags = getFlags(eaAddress);
+		flags_t flags = get_flags(eaAddress);
 		if (has_cmt(flags))
 		{
-			get_cmt(eaAddress, false, szTemp, MAXSTR - 1);
-			if (szTemp == strstr(szTemp, " (#Func "))
+			qstring szTemp;
+			get_cmt(&szTemp, eaAddress, false);
+			if (szTemp.find(" (#Func ") == 0)
 			{
-				char * szResult = strchr(szTemp, ')') + 2;
-				strcpy_s(name, MAXSTR - 1, szResult);
-				found = true;
-				//msg(" *" EAFORMAT " GetMemberName:'%s' " EAFORMAT " %d\n", eaMember, name, eaAddress, flags);
+				size_t p = szTemp.find(") ");
+				if (p > 0)
+				{
+					szTemp.remove(0, p + 2);
+					strcpy_s(name, MAXSTR - 1, szTemp.c_str());
+					found = true;
+					//msg(" *" EAFORMAT " GetMemberName:'%s' " EAFORMAT " %d\n", eaMember, name, eaAddress, flags);
+				}
 			}
 		}
 		if (!found)
 		{
-			qstring cn = get_true_name(eaMember);
-			if (cn.c_str())
-				strncpy(szTemp, cn.c_str(), (MAXSTR - 1));
-			strcpy_s(name, MAXSTR - 1, szTemp);
+			qstring cn = get_name(eaMember);
+			strcpy_s(name, MAXSTR - 1, cn.c_str());
 		}
 	}
 	else

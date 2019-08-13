@@ -1,19 +1,24 @@
 
 #pragma once
 
-#include <Windows.h>
+#include "stdafx.h"
 #include <QtWidgets/QDialog>
+#include <SegSelect.h>
+
 #include "ui_dialog.h"
 
-class MainDialog : public QDialog, public Ui::Dialog
+class MainDialog : public QDialog, public Ui::MainCIDialog
 {
     Q_OBJECT
 public:
-	MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone, BOOL &optionClean, BOOL &optionFullClear);
-	MainDialog() {}
-	MainDialog(MainDialog &&) {}
-	MainDialog(const MainDialog&) = default;
+    MainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionAudioOnDone, SegSelect::segments **segs, BOOL &optionClean, BOOL &optionFullClear);
+
+private:
+	SegSelect::segments **segs;
+
+private slots:
+	void segmentSelect();
 };
 
 // Do main dialog, return TRUE if canceled
-BOOL DoMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionOverwriteComments, BOOL &optionAudioOnDone, BOOL &optionClean, BOOL &optionFullClear);
+BOOL doMainDialog(BOOL &optionPlaceStructs, BOOL &optionProcessStatic, BOOL &optionAudioOnDone, SegSelect::segments **segs, BOOL &optionClean, BOOL &optionFullClear);
