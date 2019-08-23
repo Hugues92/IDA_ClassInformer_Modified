@@ -3151,8 +3151,8 @@ static BOOL getRttiData(SegSelect::segments *segList)
 				return(TRUE);
 
 			// ==== Find and process vftables
-			//msg("\nScanning for BS.\n");
-			//getBSData(Database, fileList[7].m_file);
+			msg("\nScanning for BS.\n");
+			getBSData(Database, fileList[7].m_file);
 
 			if (dumpFuncs())
 				return(TRUE);

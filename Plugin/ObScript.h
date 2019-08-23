@@ -29,6 +29,7 @@ typedef bool(*ObScript_Parse)(UInt32 numParams, ObScriptParam * paramInfo, Scrip
 typedef bool(*_ExtractArgs)(ObScriptParam * paramInfo, void * scriptData, UInt32 * opcodeOffsetPtr, TESObjectREFR * arg3, TESObjectREFR * thisObj, Script * script, ScriptLocals * eventList, ...);
 
 // 50
+#ifdef _WIN64
 struct ObScriptCommand64
 {
 	const char			* longName;		// 00
@@ -53,22 +54,64 @@ struct ObScriptCommand64
 
 struct ObScriptCommand32
 {
-	const char			* longName;		// 00
-	const char			* shortName;	// 04
-	UInt32				opcode;			// 08
-	const char			* helpText;		// 0C
-	UInt8				needsParent;	// 10
-	UInt8				pad21;			// 11
-	UInt16				numParams;		// 12
-	ObScriptParam		* params;		// 14
+	UInt32			longName;		// 00
+	UInt32			shortName;		// 04
+	UInt32			opcode;			// 08
+	UInt32			helpText;		// 0C
+	UInt8			needsParent;	// 10
+	UInt8			pad21;			// 11
+	UInt16			numParams;		// 12
+	UInt32			params;			// 14
 
 	// handlers
-	ObScript_Execute	execute;		// 18
-	ObScript_Parse		parse;			// 1C
-	ObScript_Eval		eval;			// 20
+	UInt32			execute;		// 18
+	UInt32			parse;			// 1C
+	UInt32			eval;			// 20
 
-	UInt32				flags;			// 24
+	UInt32			flags;			// 24
 };
+#else
+struct ObScriptCommand64
+{
+	const char			* longName;		// 00
+	const char			* shortName;	// 08
+	UInt32				opcode;			// 10
+	UInt32				pad14;			// 14
+	const char			* helpText;		// 18
+	UInt8				needsParent;	// 20
+	UInt8				pad21;			// 21
+	UInt16				numParams;		// 22
+	UInt32				pad24;			// 24
+	ObScriptParam		* params;		// 28
+
+	// handlers
+	ObScript_Execute	execute;		// 30
+	ObScript_Parse		parse;			// 38
+	ObScript_Eval		eval;			// 40
+
+	UInt32				flags;			// 48
+	UInt32				pad4C;			// 4C
+};
+
+struct ObScriptCommand32
+{
+	UInt64		longName;		// 00
+	UInt64		shortName;		// 04
+	UInt32		opcode;			// 08
+	UInt64		helpText;		// 0C
+	UInt8		needsParent;	// 10
+	UInt8		pad21;			// 11
+	UInt16		numParams;		// 12
+	UInt64		params;			// 14
+
+	// handlers
+	UInt64		execute;		// 18
+	UInt64		parse;			// 1C
+	UInt64		eval;			// 20
+
+	UInt32		flags;			// 24
+};
+#endif
 
 bool Cmd_Default_Execute(COMMAND_ARGS);
 bool Cmd_Default_Eval(COMMAND_ARGS);

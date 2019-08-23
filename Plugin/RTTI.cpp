@@ -635,14 +635,15 @@ static int getIdaString(ea_t ea, __out LPSTR buffer, int bufferSize)
     if (it != stringCache.end())
     {
         LPCSTR str = it->second.c_str();
-        int len = (int) strlen(str);
+        UINT len = (UINT) strlen(str);
 
 		if (len > RTTI::maxClassNameLength) RTTI::maxClassNameLength = len;
 
-        if (len > bufferSize)
-			len = bufferSize;
-        strncpy_s(buffer, MAXSTR, str, len);
-        return len;
+		int l = (int)len;
+        if (l > bufferSize)
+			l = bufferSize;
+        strncpy_s(buffer, MAXSTR, str, l);
+        return l;
     }
     else
     {
@@ -2442,6 +2443,7 @@ UINT RTTI::countTemplateType(LPCSTR templateName)
 		chars++;
 		if (chars > 250) return 25;
 	}
+	//msgR(" ** countTemplateType: %03d for '%s'\n", count, templateName);
 	return count;
 }
 

@@ -531,8 +531,10 @@ bool getBSData(LPCSTR Database, FILE* f)
 				g_ParamTypeCount=GetInt("Count", "ParamTypes");
 				g_ParamTypeMax = GetInt("Max", "ParamTypes");
 				msgR("\t\t%3d found for %d Max\n", g_ParamTypeCount, g_ParamTypeMax);
-				if (g_ParamTypeCount)
+				if (g_ParamTypeCount > -1)
 				{
+					if (-1 == g_ParamTypeMax)
+						g_ParamTypeMax = g_ParamTypeCount;
 					__int32 typeID;
 					__int16 wbType;
 					int n = 0;
