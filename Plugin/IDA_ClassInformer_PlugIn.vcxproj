@@ -84,7 +84,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <TargetExt>.dlL</TargetExt>
-    <TargetName>IDA_ClassInformer_PlugIn64_forBS</TargetName>
+    <TargetName>IDA_ClassInformer_PlugIn_forBS64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IgnoreImportLibrary>true</IgnoreImportLibrary>
@@ -98,7 +98,7 @@
     <LinkIncremental>false</LinkIncremental>
     <GenerateManifest>false</GenerateManifest>
     <TargetExt>.dlL</TargetExt>
-    <TargetName>IDA_ClassInformer_PlugIn64_forBS</TargetName>
+    <TargetName>IDA_ClassInformer_PlugIn_forBS64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Midl>
