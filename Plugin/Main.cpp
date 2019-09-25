@@ -657,7 +657,7 @@ static void setIntializerTable(ea_t start, ea_t end, BOOL isCpp)
                 setName(start, name);
             }
 
-			size_t index = 0;
+			int index = 0;
 			for (ea_t ea = start; ea < end; ea += sizeof(ea_t))
 			{
 				ea_t ear;
@@ -756,7 +756,7 @@ static void setTerminatorTable(ea_t start, ea_t end)
                 setName(start, name);
             }
 
-			size_t index = 0;
+			int index = 0;
 			for (ea_t ea = start; ea < end; ea += sizeof(ea_t))
 			{
 				ea_t ear;
@@ -832,7 +832,7 @@ static void setCtorDtorTable(ea_t start, ea_t end)
                 setName(start, name);
             }
 
-			size_t index = 0;
+			int index = 0;
 			for (ea_t ea = start; ea < end; ea += sizeof(ea_t))
 			{
 				ea_t ear;
@@ -1549,7 +1549,7 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
         eaRefMap::iterator colEnd = colMap.end();
 
 		// Walk uint32 at the time, at align 4 (same for either 32bit or 64bit targets)
-        for (ea_t ptr = startEA; ptr < endEA; ptr += sizeof(UINT))
+        for (ea_t ptr = startEA; ptr < endEA; ptr += sizeof(ea_t))
         {
             // A COL here?
             ea_t ea = getEa(ptr);
@@ -1569,7 +1569,7 @@ static BOOL scanSeg4Vftables(segment_t *seg, eaRefMap &colMap)
 						BOOL result =  RTTI::processVftablePart1(vfptr, it->first);
 						//if(result)
 						//	msg(EAFORMAT " vft fix **\n", vfptr);
-						vftablesFixed += (UINT) result;
+						if (result) vftablesFixed++;
                         it->second++, foundCount++;
                     }
                 }
