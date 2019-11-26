@@ -1687,8 +1687,13 @@ bool OpenFiles(void)
 			qstring fullFileName = qstring(Database);
 			UINT l = (UINT)(fullFileName.length() - strlen(".idb"));
 			if ((fullFileName.substr(l) == ".idb") || (fullFileName.substr(l) == ".i64"))
+			{
 				fullFileName = fullFileName.substr(0, l);
-			try { qmkdir(fullFileName.c_str(), 0); }
+				fullFileName += "__ICI__";
+			}
+			try { 
+				qmkdir(fullFileName.c_str(), 0); 
+			}
 			catch (...) {};
 
 			fullFileName += "\\";
